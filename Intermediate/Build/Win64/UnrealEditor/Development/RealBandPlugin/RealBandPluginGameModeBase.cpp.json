@@ -1,0 +1,19 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\projects\\realbandplugin\\realbandplugin\\source\\realbandplugin\\realbandplugingamemodebase.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\projects\\realbandplugin\\realbandplugin\\intermediate\\build\\win64\\realbandplugineditor\\development\\engine\\sharedpch.engine.shadowerrors.h.pch",
+        "Includes": [
+            "c:\\projects\\realbandplugin\\realbandplugin\\intermediate\\build\\win64\\unrealeditor\\development\\realbandplugin\\definitions.realbandplugin.h",
+            "c:\\projects\\realbandplugin\\realbandplugin\\source\\realbandplugin\\realbandplugingamemodebase.h",
+            "c:\\program files\\epic games\\ue_5.0\\engine\\source\\runtime\\engine\\classes\\gameframework\\gamemodebase.h",
+            "c:\\program files\\epic games\\ue_5.0\\engine\\source\\runtime\\engine\\classes\\engine\\serverstatreplicator.h",
+            "c:\\program files\\epic games\\ue_5.0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\serverstatreplicator.generated.h",
+            "c:\\program files\\epic games\\ue_5.0\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\gamemodebase.generated.h",
+            "c:\\projects\\realbandplugin\\realbandplugin\\intermediate\\build\\win64\\unrealeditor\\inc\\realbandplugin\\realbandplugingamemodebase.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

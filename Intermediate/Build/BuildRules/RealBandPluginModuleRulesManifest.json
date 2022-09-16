@@ -1,0 +1,9 @@
+{
+	"SourceFiles": [
+		"C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Source\\RealBandPlugin\\RealBandPlugin.Build.cs",
+		"C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Plugins\\RealBandImporter\\Source\\RealBandImporter\\RealBandImporter.Build.cs",
+		"C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Source\\RealBandPlugin.Target.cs",
+		"C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Source\\RealBandPluginEditor.Target.cs"
+	],
+	"EngineVersion": "5.0.3"
+}

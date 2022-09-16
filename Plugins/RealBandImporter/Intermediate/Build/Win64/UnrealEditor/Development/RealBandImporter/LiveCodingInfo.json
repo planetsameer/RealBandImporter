@@ -1,0 +1,12 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.RealBandImporter.cpp.obj": [
+			"RealBandImporter.cpp.obj",
+			"RealBandImporterCommands.cpp.obj",
+			"RealBandImporterStyle.cpp.obj",
+			"FRealBandStyle.cpp.obj",
+			"FRealBandUIManager.cpp.obj"
+		]
+	}
+}

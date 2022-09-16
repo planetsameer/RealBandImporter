@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "RealBandPlugin",
+			"Path": "C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Source\\RealBandPlugin.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "RealBandPluginEditor",
+			"Path": "C:\\Projects\\RealBandPlugin\\RealBandPlugin\\Source\\RealBandPluginEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}

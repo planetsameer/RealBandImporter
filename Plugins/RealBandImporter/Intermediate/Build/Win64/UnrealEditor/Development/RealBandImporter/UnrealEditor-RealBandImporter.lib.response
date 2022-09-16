@@ -1,0 +1,12 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-RealBandImporter.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\RealBandPluginEditor\Development\UnrealEd\SharedPCH.UnrealEd.ShadowErrors.h.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Plugins\RealBandImporter\Intermediate\Build\Win64\UnrealEditor\Development\RealBandImporter\Module.RealBandImporter.cpp.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Plugins\RealBandImporter\Intermediate\Build\Win64\UnrealEditor\Development\RealBandImporter\Default.rc2.res"
+/OUT:"C:\Projects\RealBandPlugin\RealBandPlugin\Plugins\RealBandImporter\Intermediate\Build\Win64\UnrealEditor\Development\RealBandImporter\UnrealEditor-RealBandImporter.lib"

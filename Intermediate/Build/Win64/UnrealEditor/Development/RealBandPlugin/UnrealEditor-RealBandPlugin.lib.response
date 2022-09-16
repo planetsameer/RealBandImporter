@@ -1,0 +1,15 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-RealBandPlugin.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\RealBandPluginEditor\Development\Engine\SharedPCH.Engine.ShadowErrors.h.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\RealBandPlugin.cpp.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\RealBandPluginGameModeBase.cpp.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\RealBandPlugin.init.gen.cpp.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\RealBandPluginGameModeBase.gen.cpp.obj"
+"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\Default.rc2.res"
+/OUT:"C:\Projects\RealBandPlugin\RealBandPlugin\Intermediate\Build\Win64\UnrealEditor\Development\RealBandPlugin\UnrealEditor-RealBandPlugin.lib"

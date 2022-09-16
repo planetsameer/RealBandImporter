@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\projects\\realbandplugin\\realbandplugin\\source\\realbandplugin\\realbandplugin.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\projects\\realbandplugin\\realbandplugin\\intermediate\\build\\win64\\realbandplugineditor\\development\\engine\\sharedpch.engine.shadowerrors.h.pch",
+        "Includes": [
+            "c:\\projects\\realbandplugin\\realbandplugin\\intermediate\\build\\win64\\unrealeditor\\development\\realbandplugin\\definitions.realbandplugin.h",
+            "c:\\projects\\realbandplugin\\realbandplugin\\source\\realbandplugin\\realbandplugin.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}
