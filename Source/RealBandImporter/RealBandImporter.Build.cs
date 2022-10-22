@@ -16,7 +16,11 @@ public class RealBandImporter : ModuleRules
 
                 Path.Combine(EngineDirectory, @"Plugins/Editor/AssetManagerEditor/Source/AssetManagerEditor/Public"),
 
-                Path.Combine(EngineDirectory, @"Source/Editor/ContentBrowser/Private")
+                Path.Combine(EngineDirectory, @"Source/Editor/ContentBrowser/Private"),
+
+                Path.Combine(EngineDirectory, @"Plugins/Enterprise/DataSmithGLTFImporter/Source/DataSmithGLTFTranslator/Private")
+
+                
 
                            }
 			);
@@ -32,7 +36,8 @@ public class RealBandImporter : ModuleRules
 
                Path.Combine(EngineDirectory, @"Plugins/Editor/AssetManagerEditor/Source/AssetManagerEditor/Public"),
                Path.Combine(EngineDirectory, @"Plugins/Editor/AssetManagerEditor/Source/AssetManagerEditor/Private"),
-               Path.Combine(EngineDirectory, @"Source/Editor/ContentBrowser/Private")
+               Path.Combine(EngineDirectory, @"Source/Editor/ContentBrowser/Private"),
+               Path.Combine(EngineDirectory, @"Source/Editor/ContentBrowser/Public")
 
 
     }
@@ -82,9 +87,9 @@ public class RealBandImporter : ModuleRules
                 "EditorWidgets",
                 "EditorStyle",
                 "WebBrowser",
-                    "AssetRegistry",
-                    
-                    "AssetTools",
+                "AssetRegistry",
+                
+                "AssetTools",
                 "ContentBrowser",
                 "ContentBrowserData",
                 "AssetManagerEditor"
