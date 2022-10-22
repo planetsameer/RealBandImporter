@@ -68,11 +68,20 @@
 //core
 #include "CoreGlobals.h"
 
+DEFINE_LOG_CATEGORY(LogManager);
+
+
 TSharedPtr<FRealBandUIManagerImpl> FRealBandUIManager::Instance;
 const FName RealBandTabName = "RealBandTab";
 
 #define LOCTEXT_NAMESPACE "RealBand"
 
+
+FRealBandUIManagerImpl::FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> inFRealBandAssetImporter):
+	                    pFRealBandAssetImporter(inFRealBandAssetImporter)
+{
+
+}
 void FRealBandUIManagerImpl::Initialize()
 {
 	 
@@ -108,20 +117,19 @@ void FRealBandUIManagerImpl::Initialize()
 		}
 	}
 
-	TSharedPtr<SWebBrowser> PluginWebBrowser;
-
+	
 	//Create the MainWindow
 	CreateWindow();
 
 }
 
-void FRealBandUIManager::Initialize()
+void FRealBandUIManager::Initialize(TSharedPtr<FRealBandAssetImporter> iFRealBandAssetImporter)
 {
 	
 	if (!Instance.IsValid())
 	{
 		FRealBandStyle::Initialize();
-		Instance = MakeShareable(new FRealBandUIManagerImpl);
+		Instance = MakeShareable(new FRealBandUIManagerImpl(iFRealBandAssetImporter));
 	
 	}
 	Instance->Initialize();
@@ -135,6 +143,10 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 	if (!pDialogMainWindow)
 	{
+		// Get the AssetConfig from FRealBandAssetImporter
+		FAssetPickerConfig ConfigPicker;
+		pFRealBandAssetImporter->GetAssetConfig(ConfigPicker);
+
 		SelectedProject = (*Array_Resolutions.begin());
 		pDialogMainWindow = SNew(SWindow)
 			.Title(FText::FromString("RealBand"))
@@ -169,6 +181,20 @@ void FRealBandUIManagerImpl::CreateWindow()
 			
 
 			]
+		// Asset Viewer
+		+ SCanvas::Slot()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			.Size(FVector2D(730.0f, 440.0f))
+			.Position(FVector2D(150.0f, 125.0f))
+			[
+				SAssignNew(pFRealBandAssetLoader, FRealBandAssetLoader)
+			//	.AssetPathConfig(ConfigPath)
+			   .AssetPickerConfig(ConfigPicker)
+
+
+			]
+		/////////////////
 		+ SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
@@ -462,6 +488,7 @@ FReply FRealBandUIManagerImpl::LaunchSettings()
 
 	pSettingsBox->SetVisibility(EVisibility::Visible);
 	pImport->SetVisibility(EVisibility::Collapsed);
+	pFRealBandAssetLoader->SetVisibility(EVisibility::Collapsed);
 	return FReply::Handled();
 }
 
@@ -472,6 +499,7 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
 	
+
 	FString sourceDir("RealBand");
 	FPathPickerConfig ConfigPath;
 	ConfigPath.DefaultPath = sourceDir;
@@ -485,14 +513,17 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	{
 		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
 
-		bCollection = CollectionManager.CreateCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, ECollectionStorageMode::Static);
-		FPermissionListOwners listOwners;
-		CollectionManager.GetCollectionNames(ECollectionShareType::CST_Local, listOwners);
+		if (!CollectionManager.CollectionExists(FName("RealBand"), ECollectionShareType::CST_Local))
+		{
+			bCollection = CollectionManager.CreateCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, ECollectionStorageMode::Static);
+			FPermissionListOwners listOwners;
+			CollectionManager.GetCollectionNames(ECollectionShareType::CST_Local, listOwners);
 
-		FString Name = listOwners[0].GetPlainNameString();
-		
-		FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
-		collectionType.Add(collectObj);
+			FString Name = listOwners[0].GetPlainNameString();
+
+			FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
+			collectionType.Add(collectObj);
+		}
 	}
 
 	// Asset Handling 
@@ -505,17 +536,20 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	
 	//GIsAutomationTesting = true;
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-	FString FbxFileToImport("C:\\Assets\\XOM_FBX.fbx");
+	//FString FbxFileToImport("C:\\Assets\\XOM_FBX.fbx");
+	FString FbxFileToImport("C:\\Assets\\cadnvas\\basketballcourt.FBX");
 	TArray<FString> CurFileToImport;
 	CurFileToImport.Add(FbxFileToImport);
 	//FString ImportAssetPath = TEXT("/Game");
 	//FString ImportAssetPath = TEXT("/Engine/Materials");
 	FString ImportAssetPath = TEXT("/Engine/RealBand");
 	TArray<UObject*>  ImportedObjects = AssetToolsModule.Get().ImportAssets(CurFileToImport, ImportAssetPath, FbxFactory);
+	
 	ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
 	AssetData.Append(ImportedObjects);
 	
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+
 	TArray<FAssetData> AssetDataList;
 	TArray<FString> APath;
 	APath.Add(TEXT("/Engine/RealBand"));
@@ -525,7 +559,10 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	TArray<FName> PackagePaths;
 	PackagePaths.Add(FName("/Engine/RealBand"));
 	
-	
+	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
+	//TODO: Refresh the asset view
+	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
+	return FReply::Handled();;
 
 	//
 
@@ -617,6 +654,13 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	if (ObjectPathsToAddToCollection.Num() > 0)
 	{
 		bCollect = FCollectionManagerModule::GetModule().Get().AddToCollection(FName("RealBand"), ECollectionShareType::CST_Local, ObjectPathsToAddToCollection.Array());
+		if (bCollect)
+		{
+			if (!FCollectionManagerModule::GetModule().Get().SaveCollection(FName("RealBand"), ECollectionShareType::CST_Local))
+			{
+				UE_LOG(LogManager, Display, TEXT("Failed to Save Collection"));
+			}
+		}
 	}
 
 	if (bCollection)
@@ -668,18 +712,13 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	ConfigPath.OnPathSelected = FOnPathSelected::CreateSP(this, &FRealBandUIManagerImpl::HandlePathSelected);
 	ConfigPath.SetPathsDelegates.Add(&SetPathsDelegate);
 	//AssetPicker->GetAssetView()->SetSourcesData(DefaultSourcesData);
-	TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
+	//TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
 	
-	//
-	//TSharedRef<IDatasmithScene> OutScene;
 	
-	//FSyncToAssetsDelegate SyncToAssetsDelegate;
-	//SyncToAssetsDelegate.Execute(AssetData);
-
 	FAssetPickerConfig ConfigPicker;
 	ConfigPicker.SelectionMode = ESelectionMode::Single;
 	ConfigPicker.Filter.bRecursiveClasses = true;
-	ConfigPicker.Filter.ClassNames = AssetClasses;
+	//ConfigPicker.Filter.ClassNames = AssetClasses;
 	ConfigPicker.Filter.bRecursivePaths = true;
 	//ConfigPicker.Filter.PackagePaths= PackagePaths;
 	ConfigPicker.Collections = collectionType;
@@ -688,12 +727,8 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	ConfigPicker.bAllowNullSelection = true;
 	ConfigPicker.bAllowDragging = false;
 	ConfigPicker.ThumbnailLabel = EThumbnailLabel::Type::AssetName;
-	ConfigPicker.AdditionalReferencingAssets = AssetData;
+	//ConfigPicker.AdditionalReferencingAssets = AssetData;
 	ConfigPicker.bAutohideSearchBar = false;
-	//ConfigPicker.SyncToAssetsDelegates.Add(&SyncToAssetsDelegate);
-	
-//	ConfigPicker.OnFolderEntered = FOnPathSelected::CreateSP(this, &FRealBandUIManagerImpl::HandleAssetViewFolderEntered);
-	//Config.OnAssetSelected = FOnAssetSelected::CreateSP(this, &SToolInputAssetComboPanel::NewAssetSelected);
 	TArray<FString> selectedPath;
 	selectedPath.Add(sourceDir);
 	
@@ -712,6 +747,44 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 		];
 	
 	return FReply::Handled();
+}
+
+
+void FRealBandUIManagerImpl::UpdateCollections(const FName & CollectionName,const FName & PackageDir)
+{
+	TArray<FName> PackagePaths;
+	PackagePaths.Add(PackageDir);
+
+	bool bAdded = false;
+	TArray<FAssetData> AssetsInPackages;
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+	IAssetRegistry* AssetRegistry = &AssetRegistryModule.Get();
+	FARFilter Filter;
+	Filter.bIncludeOnlyOnDiskAssets = false;
+	Filter.PackagePaths = PackagePaths;
+	TArray<FAssetData> AsstInPackages;
+	AssetRegistry->GetAssets(Filter, AsstInPackages);
+	TSet<FName> ObjectPathsToAddToCollection;
+	bool bCollect = false;
+	for (const FAssetData& AsstData : AsstInPackages)
+	{
+		ObjectPathsToAddToCollection.Add(AsstData.ObjectPath);
+	}
+	if (ObjectPathsToAddToCollection.Num() > 0)
+	{
+		bCollect = FCollectionManagerModule::GetModule().Get().AddToCollection(CollectionName, ECollectionShareType::CST_Local, ObjectPathsToAddToCollection.Array());
+		if (bCollect)
+		{
+			if (!FCollectionManagerModule::GetModule().Get().SaveCollection(CollectionName, ECollectionShareType::CST_Local))
+			{
+				UE_LOG(LogManager, Display, TEXT("Failed to Save Collection"));
+			}
+		}
+	}
+	if (!FCollectionManagerModule::GetModule().Get().UpdateCollection(CollectionName, ECollectionShareType::CST_Local))
+	{
+		UE_LOG(LogManager, Display, TEXT("Failed to Update Collection"));
+	}
 }
 
 void  FRealBandUIManagerImpl::HandlePathSelected(const FString& NewPath)

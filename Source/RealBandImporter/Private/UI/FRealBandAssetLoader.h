@@ -18,6 +18,8 @@ class SAssetSearchBox;
 class FFrontendFilter_Text;
 class SComboButton;
 class SFilterList;
+struct FAssetSearchBoxSuggestion;
+
 class FRealBandAssetLoader :public SCompoundWidget
 {
 public:
@@ -67,6 +69,19 @@ public:
 	void HandleSearchSettingsChanged();
 
 	FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent);
+
+	FText OnAssetSearchSuggestionChosen(const FText& SearchText, const FString& Suggestion) const;
+
+	void OnAssetSearchSuggestionFilter(const FText& SearchText, TArray<FAssetSearchBoxSuggestion>& PossibleSuggestions,
+		                               FText& SuggestionHighlightText) const;
+
+	void ExtractAssetSearchFilterTerms(const FText& SearchText, FString* OutFilterKey,
+		FString* OutFilterValue, int32* OutSuggestionInsertionIndex) const;
+	FText GetSearchAssetsHintText() const;
+
+	void HandleAssetViewSearchOptionsChanged();
+
+	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime);
 private:
 
 	/** The list of FrontendFilters currently applied to the asset view */
@@ -104,4 +119,6 @@ private:
 	void SetSearchBoxText(const FText& InSearchText);
 
 	void SyncToAssets(const TArray<FAssetData>& AssetDataList);
+
+	
 };

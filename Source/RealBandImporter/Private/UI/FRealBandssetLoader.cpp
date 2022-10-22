@@ -12,6 +12,14 @@
 
 #include "FrontendFilters.h"
 
+#include "ContentBrowserModule.h"
+
+// Asset
+#include "AssetToolsModule.h"
+#include "AssetRegistryModule.h"
+#include "AssetViewUtils.h"
+
+
 #define LOCTEXT_NAMESPACE "RealBandAssetPreviewWidget"
 
 
@@ -32,6 +40,8 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 	OnAssetSelected = InArgs._AssetPickerConfig.OnAssetSelected;
 	OnAssetEnterPressed = InArgs._AssetPickerConfig.OnAssetEnterPressed;
 	
+	TArray<FAssetSearchBoxSuggestion> PossibleSuggestions;
+	PossibleSuggestions.Add(FAssetSearchBoxSuggestion::MakeSimpleSuggestion(FString("XOM")));
 
 	for (auto DelegateIt = InArgs._AssetPickerConfig.SyncToAssetsDelegates.CreateConstIterator(); DelegateIt; ++DelegateIt)
 	{
@@ -80,11 +90,18 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		      .FillWidth(1.0f)
 		      [
 				  SAssignNew(SearchBoxPtr, SAssetSearchBox)
+				  .HintText(this, &FRealBandAssetLoader::GetSearchAssetsHintText)
 			      //.HintText(NSLOCTEXT("ContentBrowser", "SearchBoxHint", "Search Assets"))
 		          .OnTextCommitted(this, &FRealBandAssetLoader::OnSearchBoxCommitted)
 				  .OnTextChanged(this, &FRealBandAssetLoader::OnSearchBoxChanged)
 		          .DelayChangeNotificationsWhileTyping(true)
 		          .OnKeyDownHandler(this, &FRealBandAssetLoader::HandleKeyDownFromSearchBox)
+		          .OnAssetSearchBoxSuggestionFilter(this, &FRealBandAssetLoader::OnAssetSearchSuggestionFilter)
+		          .OnAssetSearchBoxSuggestionChosen(this, &FRealBandAssetLoader::OnAssetSearchSuggestionChosen)
+		          .Visibility(EVisibility::Visible)
+		          //.PossibleSuggestions(PossibleSuggestions)
+		          .MustMatchPossibleSuggestions(false)
+		          
 		      ]
 	        + SHorizontalBox::Slot()
               .AutoWidth()
@@ -114,6 +131,11 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		    .InitialThumbnailSize(EThumbnailSize::Small)
 		    .OnItemsActivated(this, &FRealBandAssetLoader::HandleItemsActivated)
 		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleSearchSettingsChanged)
+		    .InitialCategoryFilter(EContentBrowserItemCategoryFilter::IncludeAssets)
+		    .InitialAssetSelection(nullptr)
+		    .FilterRecursivelyWithBackendFilter(true)
+		    .FrontendFilters(FrontendFilters)
+		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged)
 		       
 		];
 
@@ -126,12 +148,22 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		TextFilter->SetIncludeAssetPath(AssetViewPtr->IsIncludingAssetPaths());
 		TextFilter->SetIncludeCollectionNames(AssetViewPtr->IsIncludingCollectionNames());
 	
-		AssetViewPtr->RequestSlowFullListRefresh();
+		//AssetViewPtr->RequestSlowFullListRefresh();
 		AssetViewPtr->SetSourcesData(CurrentSourcesData);
-		//AssetViewPtr->SetUserSearching(true);
+		AssetViewPtr->SetUserSearching(true);
+		// Initialize the search options
+		HandleAssetViewSearchOptionsChanged();
 	}
 
 	
+}
+
+
+void FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged()
+{
+	TextFilter->SetIncludeClassName(AssetViewPtr->IsIncludingClassNames());
+	TextFilter->SetIncludeAssetPath(AssetViewPtr->IsIncludingAssetPaths());
+	TextFilter->SetIncludeCollectionNames(AssetViewPtr->IsIncludingCollectionNames());
 }
 
 EActiveTimerReturnType FRealBandAssetLoader::SetFocusPostConstruct(double InCurrentTime, float InDeltaTime)
@@ -150,6 +182,53 @@ EActiveTimerReturnType FRealBandAssetLoader::SetFocusPostConstruct(double InCurr
 }
 
 
+void FRealBandAssetLoader::OnAssetSearchSuggestionFilter(const FText& SearchText, TArray<FAssetSearchBoxSuggestion>& PossibleSuggestions, FText& SuggestionHighlightText) const
+{
+	check(PossibleSuggestions.Num() == 0);
+	FString FilterKey;
+	FString FilterValue;
+	ExtractAssetSearchFilterTerms(SearchText, &FilterKey, &FilterValue, nullptr);
+
+	auto PassesValueFilter = [&FilterValue](const FString& InOther)
+	{
+		return FilterValue.IsEmpty() || InOther.Contains(FilterValue);
+	};
+
+	
+	if (FilterKey.IsEmpty() || (FilterKey == TEXT("Collection") || FilterKey == TEXT("Tag")))
+	{
+		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
+
+		TArray<FCollectionNameType> AllCollections;
+		CollectionManager.GetCollections(AllCollections);
+
+		TArray<FName> PackagePaths;
+		PackagePaths.Add(FName("/Engine/RealBand"));
+
+		bool bAdded = false;
+		TArray<FAssetData> AssetsInPackages;
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		IAssetRegistry* AssetRegistry = &AssetRegistryModule.Get();
+		FARFilter Filter;
+		Filter.bIncludeOnlyOnDiskAssets = false;
+		Filter.PackagePaths = PackagePaths;
+		TArray<FAssetData> AsstInPackages;
+		AssetRegistry->GetAssets(Filter, AsstInPackages);
+		const FText CollectionsCategoryName = NSLOCTEXT("ContentBrowser", "CollectionsCategoryName", "Collections");
+		for (FAssetData& ObjectAsset : AsstInPackages)
+		{
+			FString AssetName = ObjectAsset.AssetName.GetPlainNameString();
+			PossibleSuggestions.Add(FAssetSearchBoxSuggestion{ MoveTemp(AssetName), FText::FromName(MoveTemp(ObjectAsset.AssetName))
+				                                             , CollectionsCategoryName });
+		}
+	}
+
+	
+
+	SuggestionHighlightText = FText::FromString(FilterValue);
+
+}
+
 void FRealBandAssetLoader::HandleSearchSettingsChanged()
 {
 //	bool bClassNamesProvided = (FilterListPtr.IsValid() ? FilterListPtr->GetInitialClassFilters().Num() != 1 : false);
@@ -162,22 +241,170 @@ void FRealBandAssetLoader::HandleSearchSettingsChanged()
 void FRealBandAssetLoader::OnSearchBoxChanged(const FText& InSearchText)
 {
 	SetSearchBoxText(InSearchText);
+	FContentBrowserModule& ContentBrowserModule = FModuleManager::GetModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
+	ContentBrowserModule.GetOnSearchBoxChanged().Broadcast(InSearchText, false);
 }
+
+
+FText FRealBandAssetLoader::OnAssetSearchSuggestionChosen(const FText& SearchText, const FString& Suggestion) const
+{
+	int32 SuggestionInsertionIndex = 0;
+	ExtractAssetSearchFilterTerms(SearchText, nullptr, nullptr, &SuggestionInsertionIndex);
+
+	FString SearchString = SearchText.ToString();
+	SearchString.RemoveAt(SuggestionInsertionIndex, SearchString.Len() - SuggestionInsertionIndex, false);
+	SearchString.Append(Suggestion);
+
+	return FText::FromString(SearchString);
+}
+
+
+void FRealBandAssetLoader::ExtractAssetSearchFilterTerms(const FText& SearchText, FString* OutFilterKey, 
+	                                                     FString* OutFilterValue, int32* OutSuggestionInsertionIndex) const
+{
+	const FString SearchString = SearchText.ToString();
+
+	if (OutFilterKey)
+	{
+		OutFilterKey->Reset();
+	}
+	if (OutFilterValue)
+	{
+		OutFilterValue->Reset();
+	}
+	if (OutSuggestionInsertionIndex)
+	{
+		*OutSuggestionInsertionIndex = SearchString.Len();
+	}
+
+	// Build the search filter terms so that we can inspect the tokens
+	FTextFilterExpressionEvaluator LocalFilter(ETextFilterExpressionEvaluatorMode::Complex);
+	LocalFilter.SetFilterText(SearchText);
+
+	// Inspect the tokens to see what the last part of the search term was
+	// If it was a key->value pair then we'll use that to control what kinds of results we show
+	// For anything else we just use the text from the last token as our filter term to allow incremental auto-complete
+	const TArray<FExpressionToken>& FilterTokens = LocalFilter.GetFilterExpressionTokens();
+	if (FilterTokens.Num() > 0)
+	{
+		const FExpressionToken& LastToken = FilterTokens.Last();
+
+		// If the last token is a text token, then consider it as a value and walk back to see if we also have a key
+		if (LastToken.Node.Cast<TextFilterExpressionParser::FTextToken>())
+		{
+			if (OutFilterValue)
+			{
+				*OutFilterValue = LastToken.Context.GetString();
+			}
+			if (OutSuggestionInsertionIndex)
+			{
+				*OutSuggestionInsertionIndex = FMath::Min(*OutSuggestionInsertionIndex, LastToken.Context.GetCharacterIndex());
+			}
+
+			if (FilterTokens.IsValidIndex(FilterTokens.Num() - 2))
+			{
+				const FExpressionToken& ComparisonToken = FilterTokens[FilterTokens.Num() - 2];
+				if (ComparisonToken.Node.Cast<TextFilterExpressionParser::FEqual>())
+				{
+					if (FilterTokens.IsValidIndex(FilterTokens.Num() - 3))
+					{
+						const FExpressionToken& KeyToken = FilterTokens[FilterTokens.Num() - 3];
+						if (KeyToken.Node.Cast<TextFilterExpressionParser::FTextToken>())
+						{
+							if (OutFilterKey)
+							{
+								*OutFilterKey = KeyToken.Context.GetString();
+							}
+							if (OutSuggestionInsertionIndex)
+							{
+								*OutSuggestionInsertionIndex = FMath::Min(*OutSuggestionInsertionIndex, KeyToken.Context.GetCharacterIndex());
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// If the last token is a comparison operator, then walk back and see if we have a key
+		else if (LastToken.Node.Cast<TextFilterExpressionParser::FEqual>())
+		{
+			if (FilterTokens.IsValidIndex(FilterTokens.Num() - 2))
+			{
+				const FExpressionToken& KeyToken = FilterTokens[FilterTokens.Num() - 2];
+				if (KeyToken.Node.Cast<TextFilterExpressionParser::FTextToken>())
+				{
+					if (OutFilterKey)
+					{
+						*OutFilterKey = KeyToken.Context.GetString();
+					}
+					if (OutSuggestionInsertionIndex)
+					{
+						*OutSuggestionInsertionIndex = FMath::Min(*OutSuggestionInsertionIndex, KeyToken.Context.GetCharacterIndex());
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+
+// Begin of SWidgetInterface
+void FRealBandAssetLoader::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) 
+{
+	int test = 1;
+	//AssetViewPtr->RequestQuickFrontendListRefresh();
+}
+
+FText FRealBandAssetLoader::GetSearchAssetsHintText() const
+{
+	/*if (PathViewPtr.IsValid())
+	{
+		TArray<FContentBrowserItem> Paths = PathViewPtr->GetSelectedFolderItems();
+		if (Paths.Num() > 0)
+		{
+			FString SearchHint = NSLOCTEXT("ContentBrowser", "SearchBoxPartialHint", "Search").ToString();
+			SearchHint += TEXT(" ");
+			for (int32 i = 0; i < Paths.Num(); i++)
+			{
+				SearchHint += Paths[i].GetDisplayName().ToString();
+
+				if (i + 1 < Paths.Num())
+				{
+					SearchHint += ", ";
+				}
+			}
+
+			return FText::FromString(SearchHint);
+		}
+	}*/
+
+	return NSLOCTEXT("ContentBrowser", "SearchBoxHint", "Search Assets");
+}
+
 
 void FRealBandAssetLoader::OnSearchBoxCommitted(const FText& InSearchText, ETextCommit::Type CommitInfo)
 {
 	SetSearchBoxText(InSearchText);
+	//AssetViewPtr->AdjustActiveSelection(-1);
 
-	if (CommitInfo == ETextCommit::OnEnter)
-	{
-		TArray<FContentBrowserItem> SelectionSet = AssetViewPtr->GetSelectedFileItems();
-		if (SelectionSet.Num() == 0)
-		{
-			AssetViewPtr->AdjustActiveSelection(1);
-			SelectionSet = AssetViewPtr->GetSelectedFileItems();
-		}
-		HandleItemsActivated(SelectionSet, EAssetTypeActivationMethod::Opened);
-	}
+	
+	//if (CommitInfo == ETextCommit::OnEnter)
+	//{
+	//	TArray<FContentBrowserItem> SelectionSet = AssetViewPtr->GetSelectedFileItems();
+	//	SelectionSet = AssetViewPtr->GetSelectedItems();
+	//	
+	//	TArray<FAssetData> SelectionAssetSet = AssetViewPtr->GetSelectedAssets();
+	//	//SelectionSet = AssetViewPtr->GetSelectedViewItems();
+	//	if (SelectionSet.Num() == 0)
+	//	{
+	//		AssetViewPtr->AdjustActiveSelection(1);
+	//		//SelectionSet = AssetViewPtr->GetSele();
+	//	}
+	//	HandleItemsActivated(SelectionSet, EAssetTypeActivationMethod::Opened);
+	//}
+	
 }
 
 void FRealBandAssetLoader::SetSearchBoxText(const FText& InSearchText)

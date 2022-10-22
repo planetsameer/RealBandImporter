@@ -11,12 +11,16 @@
 #include "WebBrowser/Public/IWebBrowserWindow.h"
 #include "ContentBrowserDelegates.h"
 
-#include "C:\Program Files/Epic Games/UE_5.0/Engine/Plugins/Enterprise/DataSmithGLTFImporter/Source/DataSmithGLTFTranslator/Private/DatasmithGLTFImportOptions.h"
-#include "C:\Program Files\Epic Games\UE_5.0\Engine\Plugins\Enterprise\DatasmithGLTFImporter\Source\DatasmithGLTFTranslator\Private\DatasmithGLTFImporter.h"
+#include "DatasmithGLTFImportOptions.h"
+#include "DatasmithGLTFImporter.h"
+
+class FRealBandAssetLoader;
 //#include "SWebBrowser.h"
 //#include "UI/BrowserBinding.h"
 //#include "Framework/MultiBox/MultiBoxBuilder.h"
 //#include "Framework/Docking/TabManager.h"
+DECLARE_LOG_CATEGORY_EXTERN(LogManager, Log, All);
+
 
 
 class FRealBandUIManagerImpl : public TSharedFromThis<FRealBandUIManagerImpl>
@@ -51,7 +55,13 @@ private:
 	TStrongObjectPtr<UDatasmithGLTFImportOptions> ImportOptions;
 	TStrongObjectPtr<UDatasmithGLTFImportOptions>& GetOrCreateGLTFImportOptions();
 	TSharedPtr<class FDatasmithGLTFImporter> Importer;
+	TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
+	TSharedPtr<FRealBandAssetImporter> pFRealBandAssetImporter;
+
+	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
 public:
+
+	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );
 	void Initialize();
 	void CreateWindow();
 	
@@ -65,6 +75,6 @@ public:
 class FRealBandUIManager
 {
 public:
-	static void Initialize();
+	static void Initialize(TSharedPtr<FRealBandAssetImporter>);
 	static TSharedPtr<FRealBandUIManagerImpl> Instance;
 };
