@@ -136,6 +136,8 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		    .FilterRecursivelyWithBackendFilter(true)
 		    .FrontendFilters(FrontendFilters)
 		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged)
+		    .OnItemSelectionChanged(this, &FRealBandAssetLoader::HandleItemSelectionChanged)
+		    
 		       
 		];
 
@@ -243,6 +245,31 @@ void FRealBandAssetLoader::OnSearchBoxChanged(const FText& InSearchText)
 	SetSearchBoxText(InSearchText);
 	FContentBrowserModule& ContentBrowserModule = FModuleManager::GetModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
 	ContentBrowserModule.GetOnSearchBoxChanged().Broadcast(InSearchText, false);
+}
+
+
+void FRealBandAssetLoader::HandleItemSelectionChanged(const FContentBrowserItem& InSelectedItem, ESelectInfo::Type InSelectInfo)
+{
+	bool bClassNamesProvided = true;
+	
+	if (InSelectInfo != ESelectInfo::Direct)
+	{
+		FAssetData ItemAssetData;
+		InSelectedItem.Legacy_TryGetAssetData(ItemAssetData);
+		
+		UObject *pAsset = ItemAssetData.GetAsset();
+		_ImportedObjects.Add(pAsset);
+	}
+	//TArray<UObject*>  ImportedObjects;
+	//ImportedObjects.Append(InSelectedItem)
+	//FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
+}
+
+void FRealBandAssetLoader::ImportSelectedAssets()
+{
+	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	ContentBrowserModule.Get().SyncBrowserToAssets(_ImportedObjects);
 }
 
 

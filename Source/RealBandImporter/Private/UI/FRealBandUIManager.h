@@ -42,7 +42,9 @@ private:
 	TSharedPtr<SWebBrowser> WebBrowserWidget;
 	TSharedPtr<SEditableTextBox> pAssetPath;
 	FReply LaunchSettings();
+	FReply OnLocal();
 	FReply ApplySettings();
+	FReply OnImportClicked();
 	FReply LaunchOpenFileDialog();
 	void HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo);
 	TArray<TSharedPtr <FString>> Array_Resolutions; 
@@ -62,6 +64,7 @@ private:
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );
+	~FRealBandUIManagerImpl();
 	void Initialize();
 	void CreateWindow();
 	
@@ -77,4 +80,5 @@ class FRealBandUIManager
 public:
 	static void Initialize(TSharedPtr<FRealBandAssetImporter>);
 	static TSharedPtr<FRealBandUIManagerImpl> Instance;
+	~FRealBandUIManager();
 };

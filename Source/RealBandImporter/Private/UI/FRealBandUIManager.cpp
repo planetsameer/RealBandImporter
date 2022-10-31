@@ -49,6 +49,8 @@
 //GLTF
 #include "GLTFImporterModule.h"
 #include "../Private/GLTFImportFactory.h"
+#include "../Private/GLTFImportOptions.h"
+
 #include "ExternalSourceModule.h"
 #include "ExternalSource.h"
 #include "SourceUri.h"
@@ -81,6 +83,12 @@ FRealBandUIManagerImpl::FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter
 	                    pFRealBandAssetImporter(inFRealBandAssetImporter)
 {
 
+}
+
+FRealBandUIManagerImpl::~FRealBandUIManagerImpl()
+{
+	
+	int test = 1;
 }
 void FRealBandUIManagerImpl::Initialize()
 {
@@ -123,6 +131,8 @@ void FRealBandUIManagerImpl::Initialize()
 
 }
 
+
+
 void FRealBandUIManager::Initialize(TSharedPtr<FRealBandAssetImporter> iFRealBandAssetImporter)
 {
 	
@@ -139,9 +149,9 @@ TSharedPtr<STextBlock> ComboBoxTitleBlock;
 
 void FRealBandUIManagerImpl::CreateWindow()
 {
+	bool bIsVisible = false;
 	
-
-	if (!pDialogMainWindow)
+	if (!pDialogMainWindow )
 	{
 		// Get the AssetConfig from FRealBandAssetImporter
 		FAssetPickerConfig ConfigPicker;
@@ -153,7 +163,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.ClientSize(FVector2D(1000, 650))
 			.SupportsMaximize(false)
 			.SupportsMinimize(false)
-
+			
 			[
 				//SNew(SOverlay)
 				SAssignNew(pOverlay, SOverlay)
@@ -178,7 +188,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 				.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.Text(FText::FromString("Local"))
-			
+			.OnClicked(this, &FRealBandUIManagerImpl::OnLocal)
 
 			]
 		// Asset Viewer
@@ -218,6 +228,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 				.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.Text(FText::FromString("Import"))
+			.OnClicked(this, &FRealBandUIManagerImpl::OnImportClicked)
 			]
 		    + SCanvas::Slot()
 			.HAlign(HAlign_Fill)
@@ -454,6 +465,18 @@ void FRealBandUIManagerImpl::CreateWindow()
 		pSettingsBox->SetVisibility(EVisibility::Hidden);
 
 	}
+	else
+	{
+	    bIsVisible = pDialogMainWindow->IsVisible();
+		
+    }
+
+	pDialogMainWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
+		{
+		//	FRealBandUIManager::Instance.Reset();
+			pDialogMainWindow.Reset();
+		}));
+	
 //	SAssignNew(Canvas, SCanvas).FArguments(Slot().SetSize(FVector2D(700, 700)));
 	//if (Windows.Num() > 0)
 	{
@@ -471,6 +494,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 		}
 	}
 
+
 }
 
 
@@ -483,6 +507,14 @@ void FRealBandUIManagerImpl::HandleSourceComboChanged(TSharedPtr<FString> Item, 
 	}
 }
 
+FReply FRealBandUIManagerImpl::OnLocal()
+{
+	pSettingsBox->SetVisibility(EVisibility::Collapsed);
+	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
+	pImport->SetVisibility(EVisibility::Visible);
+	return FReply::Handled();
+}
+
 FReply FRealBandUIManagerImpl::LaunchSettings()
 {
 
@@ -493,8 +525,18 @@ FReply FRealBandUIManagerImpl::LaunchSettings()
 }
 
 
+FReply FRealBandUIManagerImpl::OnImportClicked()
+{
+	// Get the selected asset and add it to content browser
+	pFRealBandAssetLoader->ImportSelectedAssets();
+	return FReply::Handled();
+}
+
+
 FReply FRealBandUIManagerImpl::ApplySettings()
 {
+	if(pFRealBandAssetLoader->GetVisibility() == EVisibility::Visible)
+		return FReply::Handled();
 
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
@@ -513,7 +555,7 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	{
 		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
 
-		if (!CollectionManager.CollectionExists(FName("RealBand"), ECollectionShareType::CST_Local))
+	//	if (!CollectionManager.CollectionExists(FName("RealBand"), ECollectionShareType::CST_Local))
 		{
 			bCollection = CollectionManager.CreateCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, ECollectionStorageMode::Static);
 			FPermissionListOwners listOwners;
@@ -524,6 +566,12 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 			FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
 			collectionType.Add(collectObj);
 		}
+		//else
+		//{
+		//	//FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
+		//	FCollectionNameType collectObj(FName("/Engine/RealBand"), ECollectionShareType::CST_Local);
+		//	collectionType.Add(collectObj);
+		//}
 	}
 
 	// Asset Handling 
@@ -543,9 +591,11 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	//FString ImportAssetPath = TEXT("/Game");
 	//FString ImportAssetPath = TEXT("/Engine/Materials");
 	FString ImportAssetPath = TEXT("/Engine/RealBand");
-	TArray<UObject*>  ImportedObjects = AssetToolsModule.Get().ImportAssets(CurFileToImport, ImportAssetPath, FbxFactory);
+	bool bSyncToBrowser = false;
+	TArray<UObject*>  ImportedObjects = AssetToolsModule.Get().ImportAssets(CurFileToImport, ImportAssetPath, FbxFactory,
+		                                                                    bSyncToBrowser,nullptr,false);
 	
-	ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
+	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
 	AssetData.Append(ImportedObjects);
 	
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
@@ -564,17 +614,20 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
 	return FReply::Handled();;
 
-	//
+	
 
 	// GLTF
 	FDatasmithSceneSource SomeCADFileSource;
-	SomeCADFileSource.SetSourceFile("C:\\Assets\\STONE_GLB.glb");
+	//SomeCADFileSource.SetSourceFile("C:\\Assets\\STONE_GLB.glb");
+	SomeCADFileSource.SetSourceFile("C:\\Assets\\planeye\\planeye.glb");
 	//TSharedPtr<IDatasmithTranslator> TranslatorForCADFiles = FDatasmithTranslatorManager::Get().SelectFirstCompatible(SomeCADFileSource);
 	FLevelEditorModule* LevelEditorModule = FModuleManager::GetModulePtr<FLevelEditorModule>(TEXT("LevelEditor"));
 	TSharedPtr<IAssetViewport> ActiveLevelViewport = LevelEditorModule->GetFirstActiveViewport();
+	
 
 	using namespace UE::DatasmithImporter;
-	const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\STONE_GLB.glb");
+	//const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\STONE_GLB.glb");
+	const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\planeye\\planeye.glb");
 	TSharedPtr<FExternalSource> ExternalSourcePtr = IExternalSourceModule::GetOrCreateExternalSource(SourceUri);
 	const TSharedPtr<IDatasmithTranslator>& TranslatorPtr = ExternalSourcePtr->GetAssetTranslator();
 	FDatasmithTranslatorCapabilities OutCapabilities;
@@ -585,11 +638,16 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	const bool bSilent = false; // don't pop options window
 	
 	//ImportContext.InitOptions(nullptr, TOptional<FString>(), bSilent);
-	ImportContext.InitOptions(nullptr, FString("C:\\Assets\\STONE_GLB.glb"), bSilent);
+	//ImportContext.InitOptions(nullptr, FString("C:\\Assets\\STONE_GLB.glb"), bSilent);
+	//ImportContext.InitOptions(nullptr, FString("C:\\Assets\\planeye\\planeye.glb"), bSilent);
+	ImportContext.InitOptions(nullptr, FString("/Engine/RealBand"), bSilent);
 	if (TSharedPtr<IDatasmithScene> LoadedScene = ExternalSourcePtr->TryLoad())
 	{
 		ImportContext.InitScene(LoadedScene.ToSharedRef());
+		
 	}
+	
+	
 
 	ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand");
 	//ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("RealBand");
@@ -601,14 +659,17 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	ImportContext.bUserCancelled = false;
 	ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
 	//ImportContext.AssetsContext.ReInit(FString("RealBand"));
-	ImportContext.ActorsContext.ImportWorld = GWorld; // Make sure actors are imported(into the current world)
 	
+	// We do not want to import into any View 
+	//ImportContext.ActorsContext.ImportWorld = GWorld; // Make sure actors are imported(into the current world)
 
-	FDatasmithImporter::ImportTextures(ImportContext);
-	FDatasmithImporter::ImportMaterials(ImportContext);
 
-	FDatasmithImporter::ImportStaticMeshes(ImportContext);
-	FDatasmithStaticMeshImporter::PreBuildStaticMeshes(ImportContext);
+	// ImportDatasmithscene already does this
+	//FDatasmithImporter::ImportTextures(ImportContext);
+	//FDatasmithImporter::ImportMaterials(ImportContext);
+
+	//FDatasmithImporter::ImportStaticMeshes(ImportContext);
+	//FDatasmithStaticMeshImporter::PreBuildStaticMeshes(ImportContext);
 	
 
 //	TSharedRef<IDatasmithScene> LoadedScene = FDatasmithSceneFactory::CreateScene(L"STONE_GLB");
@@ -633,8 +694,8 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	AssetData.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
 
 	// Add to the browser
-
-	ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
+	
+	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
 	
 
 	bool bAdded = false;
@@ -704,9 +765,9 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	}
 	
 
-	ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
+	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
 
-	
+	return FReply::Handled();
 	
 	
 	ConfigPath.OnPathSelected = FOnPathSelected::CreateSP(this, &FRealBandUIManagerImpl::HandlePathSelected);
@@ -850,7 +911,7 @@ TStrongObjectPtr<UDatasmithGLTFImportOptions>& FRealBandUIManagerImpl::GetOrCrea
 {
 	if (!ImportOptions.IsValid() && IsInGameThread())
 	{
-		//ImportOptions = Datasmith::MakeOptions<UDatasmithGLTFImportOptions>();
+	//	ImportOptions = Datasmith::MakeOptions<UDatasmithGLTFImportOptions>();
 	}
 	return ImportOptions;
 }

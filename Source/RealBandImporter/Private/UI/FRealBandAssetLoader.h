@@ -61,6 +61,10 @@ public:
 
 	void OnSearchBoxChanged(const FText& InSearchText);
 
+	void HandleItemSelectionChanged(const FContentBrowserItem& InSelectedItem, ESelectInfo::Type InSelectInfo);
+
+	void ImportSelectedAssets();
+
 	/** Focuses the search box post-construct */
 	EActiveTimerReturnType SetFocusPostConstruct(double InCurrentTime, float InDeltaTime);
 
@@ -80,6 +84,7 @@ public:
 	FText GetSearchAssetsHintText() const;
 
 	void HandleAssetViewSearchOptionsChanged();
+	
 
 	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime);
 private:
@@ -114,7 +119,8 @@ private:
 
 	/** The filter list */
 	TSharedPtr<SFilterList> FilterListPtr;
-
+	
+	TArray<UObject*>  _ImportedObjects;
 
 	void SetSearchBoxText(const FText& InSearchText);
 
