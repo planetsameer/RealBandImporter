@@ -31,8 +31,10 @@ FRealBandAssetLoader::~FRealBandAssetLoader()
 
 void FRealBandAssetLoader::SetAssetFolder(const FString & FolderPath)
 {
-
+	int test = 1;
 }
+
+
 
 void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 {
@@ -40,16 +42,13 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 	OnAssetSelected = InArgs._AssetPickerConfig.OnAssetSelected;
 	OnAssetEnterPressed = InArgs._AssetPickerConfig.OnAssetEnterPressed;
 	
-	TArray<FAssetSearchBoxSuggestion> PossibleSuggestions;
-	PossibleSuggestions.Add(FAssetSearchBoxSuggestion::MakeSimpleSuggestion(FString("XOM")));
-
-	for (auto DelegateIt = InArgs._AssetPickerConfig.SyncToAssetsDelegates.CreateConstIterator(); DelegateIt; ++DelegateIt)
+	/*for (auto DelegateIt = InArgs._AssetPickerConfig.SyncToAssetsDelegates.CreateConstIterator(); DelegateIt; ++DelegateIt)
 	{
 		if ((*DelegateIt) != NULL)
 		{
 			(**DelegateIt) = FSyncToAssetsDelegate::CreateSP(this, &FRealBandAssetLoader::SyncToAssets);
 		}
-	}
+	}*/
 
 	if (InArgs._AssetPickerConfig.bFocusSearchBoxWhenOpened)
 	{
@@ -137,6 +136,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		    .FrontendFilters(FrontendFilters)
 		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged)
 		    .OnItemSelectionChanged(this, &FRealBandAssetLoader::HandleItemSelectionChanged)
+		    .OwningContentBrowser(nullptr)
 		    
 		       
 		];

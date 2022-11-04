@@ -41,10 +41,12 @@ private:
 	TSharedPtr<STextBlock> pTextBlock;
 	TSharedPtr<SWebBrowser> WebBrowserWidget;
 	TSharedPtr<SEditableTextBox> pAssetPath;
+	TSharedPtr<SEditableTextBox> pAssetFolderPath;
 	FReply LaunchSettings();
 	FReply OnLocal();
 	FReply ApplySettings();
-	FReply OnImportClicked();
+	FReply ApplySettingsEx();
+	FReply OnImportBtnClicked();
 	FReply LaunchOpenFileDialog();
 	void HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo);
 	TArray<TSharedPtr <FString>> Array_Resolutions; 

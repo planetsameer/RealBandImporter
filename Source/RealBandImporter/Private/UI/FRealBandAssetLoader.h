@@ -13,12 +13,16 @@
 #include "SourcesData.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
+
 class SAssetView;
 class SAssetSearchBox;
 class FFrontendFilter_Text;
 class SComboButton;
 class SFilterList;
+class FAssetViewItem;
 struct FAssetSearchBoxSuggestion;
+
+
 
 class FRealBandAssetLoader :public SCompoundWidget
 {
@@ -63,8 +67,6 @@ public:
 
 	void HandleItemSelectionChanged(const FContentBrowserItem& InSelectedItem, ESelectInfo::Type InSelectInfo);
 
-	void ImportSelectedAssets();
-
 	/** Focuses the search box post-construct */
 	EActiveTimerReturnType SetFocusPostConstruct(double InCurrentTime, float InDeltaTime);
 
@@ -87,6 +89,14 @@ public:
 	
 
 	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime);
+
+	/** Return the associated AssetView */
+	const TSharedPtr<SAssetView>& GetAssetView() const { 
+		return AssetViewPtr; 
+	}
+
+
+	void ImportSelectedAssets();
 private:
 
 	/** The list of FrontendFilters currently applied to the asset view */

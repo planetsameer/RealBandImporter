@@ -21,6 +21,9 @@
 #include "Widgets/Layout/SDPIScaler.h"
 #include "Layout/ChildrenBase.h"
 #include "NodeFactory.h"
+#include "Brushes/SlateBoxBrush.h"
+
+#include "ImageUtils.h"
 
 //List of Project files
 #include "Interfaces/IProjectManager.h"
@@ -37,7 +40,7 @@
 #include "IWebBrowserCookieManager.h"
 #include "AssetRegistryModule.h"
 #include "AssetViewUtils.h"
-
+#include "AssetViewTypes.h"
 // FBX
 #include "Factories/FbxFactory.h"
 #include "Factories/FbxAnimSequenceImportData.h"
@@ -56,6 +59,7 @@
 #include "SourceUri.h"
 //
 #include "ContentBrowserModule.h"
+#include "ContentBrowserItem.h"
 #include "IAssetTools.h"
 #include "AssetToolsModule.h"
 
@@ -69,6 +73,9 @@
 //#include "AssetManagerEditorModule.h"
 //core
 #include "CoreGlobals.h"
+
+//Texture
+#include "Factories/TextureFactory.h"
 
 DEFINE_LOG_CATEGORY(LogManager);
 
@@ -228,7 +235,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 				.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.Text(FText::FromString("Import"))
-			.OnClicked(this, &FRealBandUIManagerImpl::OnImportClicked)
+			.OnClicked(this, &FRealBandUIManagerImpl::OnImportBtnClicked)
 			]
 		    + SCanvas::Slot()
 			.HAlign(HAlign_Fill)
@@ -289,7 +296,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .Size(FVector2D(280.0f, 30.0f))
 						 .Position(FVector2D(300.0f, 70.0f))
 						 [
-							 SNew(SEditableTextBox)
+							 SAssignNew(pAssetFolderPath, SEditableTextBox)
 						     .Text(FText::FromString("Select the Loca Path to Asset Folder"))
 						 
 
@@ -525,13 +532,50 @@ FReply FRealBandUIManagerImpl::LaunchSettings()
 }
 
 
-FReply FRealBandUIManagerImpl::OnImportClicked()
+FReply FRealBandUIManagerImpl::OnImportBtnClicked()
 {
 	// Get the selected asset and add it to content browser
-	pFRealBandAssetLoader->ImportSelectedAssets();
+	pImport->SetVisibility(EVisibility::Visible);
+	const TSharedPtr<SAssetView>& pAssetView = pFRealBandAssetLoader->GetAssetView();
+
+	TArray<FContentBrowserItem> AssetsSelected = pAssetView->GetSelectedItems();
+
+	TArray<FName> AssetList;
+	for (FContentBrowserItem Item : AssetsSelected)
+	{
+		if (Item.IsValid())
+		{
+			FName AssetPath = Item.GetItemName();
+			AssetList.Add(AssetPath);
+			//PendingSyncItems.SelectedVirtualPaths.Add(Item->GetItem().GetVirtualPath());
+		}
+	}
+
+	
+	pFRealBandAssetImporter->ImportSelectedAssets(AssetList, pAssetPath->GetText());
+	
 	return FReply::Handled();
 }
 
+
+FReply FRealBandUIManagerImpl::ApplySettingsEx()
+{
+	pSettingsBox->SetVisibility(EVisibility::Collapsed);
+	pImport->SetVisibility(EVisibility::Visible);
+
+	//FString TexDir("C:\\Program Files\\Epic Games\\UE_5.0\\Engine\\Content\\Editor\\Slate\\Icons\\AssetIcons\\CameraBlockingVolume_64x.png");
+	FString TexDir("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset\\00001_oldCamera2\\00001_render_png_concept_oldCamera2.png");
+	FString SourceImagePath = FPaths::ConvertRelativePathToFull(TexDir);
+	
+	UTexture2D* pTexture = nullptr;
+	//pTexture = ThumbnailGenerator::GenerateThumbnailFromFile(SourceImagePath);
+	pTexture = FImageUtils::ImportFileAsTexture2D(TexDir);
+	pTexture->AddToRoot();
+		
+	
+
+	return FReply::Handled();
+}
 
 FReply FRealBandUIManagerImpl::ApplySettings()
 {
@@ -541,6 +585,10 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
 	
+	FText AssetFolderPath = pAssetFolderPath->GetText();
+	pFRealBandAssetImporter->CreateTexturesFromAssets(AssetFolderPath);
+
+	return FReply::Handled();
 
 	FString sourceDir("RealBand");
 	FPathPickerConfig ConfigPath;
@@ -574,11 +622,15 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 		//}
 	}
 
+	//pFRealBandAssetImporter->ImportGlm();
+	return FReply::Handled();
+	//pFRealBandAssetImporter->ImportFbx(FString(""));
+
 	// Asset Handling 
 	TArray<FAssetData> AssetData;
 	// FBX
 	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 	UFbxFactory* FbxFactory = NewObject<UFbxFactory>(UFbxFactory::StaticClass());
 	FbxFactory->SetDetectImportTypeOnImport(false);
 	
@@ -591,14 +643,14 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	//FString ImportAssetPath = TEXT("/Game");
 	//FString ImportAssetPath = TEXT("/Engine/Materials");
 	FString ImportAssetPath = TEXT("/Engine/RealBand");
+	
 	bool bSyncToBrowser = false;
 	TArray<UObject*>  ImportedObjects = AssetToolsModule.Get().ImportAssets(CurFileToImport, ImportAssetPath, FbxFactory,
-		                                                                    bSyncToBrowser,nullptr,false);
-	
+		                                                                    bSyncToBrowser,nullptr,true);
+	ContentBrowserModule.Get().ForceShowPluginContent(false);
 	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
 	AssetData.Append(ImportedObjects);
-	
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+
 
 	TArray<FAssetData> AssetDataList;
 	TArray<FString> APath;
@@ -606,13 +658,17 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	TArray<FName> PackageNames;
 	AssetViewUtils::GetAssetsInPaths(APath, AssetDataList);
 
+	
+
 	TArray<FName> PackagePaths;
 	PackagePaths.Add(FName("/Engine/RealBand"));
 	
 	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
 	//TODO: Refresh the asset view
-	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
-	return FReply::Handled();;
+//	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
+
+//	AssetViewUtils::MoveAssets(ImportedObjects, TEXT("C:\\Assets\\User"));
+//	return FReply::Handled();;
 
 	
 
@@ -803,7 +859,7 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 			SAssignNew(pFRealBandAssetLoader, FRealBandAssetLoader)
 			.AssetPathConfig(ConfigPath)
 		    .AssetPickerConfig(ConfigPicker)
-		
+		    
 		    
 		];
 	
@@ -823,6 +879,7 @@ void FRealBandUIManagerImpl::UpdateCollections(const FName & CollectionName,cons
 	FARFilter Filter;
 	Filter.bIncludeOnlyOnDiskAssets = false;
 	Filter.PackagePaths = PackagePaths;
+	
 	TArray<FAssetData> AsstInPackages;
 	AssetRegistry->GetAssets(Filter, AsstInPackages);
 	TSet<FName> ObjectPathsToAddToCollection;
@@ -867,6 +924,8 @@ FReply FRealBandUIManagerImpl::LaunchOpenFileDialog()
 				uint32 SelectionFlag = 0; //A value of 0 represents single file selection while a value of 1 represents multiple file selection
 				FString FolderPath;
 				FString DefaultPath("C:\\Temp");
+				// set a default path
+				FEditorDirectories::Get().SetLastDirectory(ELastDirectory::GENERIC_EXPORT, DefaultPath);
 				DesktopPlatform->OpenDirectoryDialog(pDialogMainWindow->GetNativeWindow()->GetOSWindowHandle(),
 					                                 DefaultPath,
 					                                 DefaultPath, 
@@ -875,7 +934,10 @@ FReply FRealBandUIManagerImpl::LaunchOpenFileDialog()
 				if (pAssetPath)
 				{
 					pAssetPath->SetText(FText::FromString(FolderPath));
+					pAssetFolderPath->SetText(FText::FromString(FolderPath));
 				}
+
+				
 	//			DesktopPlatform->OpenFileDialog(ParentWindowHandle, DialogTitle, DefaultPath, FString(""), FileTypes, SelectionFlag, OutFileNames);
 			}
 	//	}
