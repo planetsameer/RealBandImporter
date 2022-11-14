@@ -7,7 +7,7 @@
 
 class FToolBarBuilder;
 class FMenuBuilder;
-
+class FRealBandAssetImporter;
 #define MS_MODULE_NAME TEXT("RealBandImporter")
 
 class FRealBandImporterModule : public IModuleInterface
@@ -39,4 +39,5 @@ private:
 
 private:
 	TSharedPtr<class FUICommandList> PluginCommands;
+	TSharedPtr<FRealBandAssetImporter> FRealBandAsstImp;
 };
