@@ -13,8 +13,13 @@
 
 #include "DatasmithGLTFImportOptions.h"
 #include "DatasmithGLTFImporter.h"
+#include "Importer/FRealBandAssetImporter.h"
+#include "RealBandCommon.h"
 
 class FRealBandAssetLoader;
+class SGridPanel;
+
+
 //#include "SWebBrowser.h"
 //#include "UI/BrowserBinding.h"
 //#include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -42,10 +47,12 @@ private:
 	TSharedPtr<SWebBrowser> WebBrowserWidget;
 	TSharedPtr<SEditableTextBox> pAssetPath;
 	TSharedPtr<SEditableTextBox> pAssetFolderPath;
+	TSharedPtr <SGridPanel> pGridPanel;
+
 	FReply LaunchSettings();
 	FReply OnLocal();
 	FReply ApplySettings();
-	FReply ApplySettingsEx();
+	FReply ResetSettings();
 	FReply OnImportBtnClicked();
 	FReply LaunchOpenFileDialog();
 	void HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo);
@@ -53,7 +60,6 @@ private:
 	TSharedPtr<FString> SelectedProject;
 	TSharedRef<SDockTab> CreatRealBandTab(const FSpawnTabArgs& Args);
 	TSharedPtr<FString> FolderSelected;
-	void HandlePathSelected(const FString&);
 	FSetPathPickerPathsDelegate SetPathsDelegate;
 
 	TStrongObjectPtr<UDatasmithGLTFImportOptions> ImportOptions;
@@ -61,12 +67,17 @@ private:
 	TSharedPtr<class FDatasmithGLTFImporter> Importer;
 	TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
 	TSharedPtr<FRealBandAssetImporter> pFRealBandAssetImporter;
-
+	TSharedPtr<SButton> ExpanderArrow;
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
+	TSharedRef<SHorizontalBox> GetSelectedOptionToggle(SELECTOPTIONS,const FText& Text);
+	USRPREFERENCE ObjUserPreference;
+	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS Type);
+	
+	
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );
-	~FRealBandUIManagerImpl();
+	virtual ~FRealBandUIManagerImpl();
 	void Initialize();
 	void CreateWindow();
 	
@@ -74,6 +85,7 @@ public:
 	TSharedPtr<SWindow> DragDropWindow;
 	TSharedPtr<IWebBrowserWindow> Browser;
 	FCreateBrowserWindowSettings WindowSettings;
+	uint16 ActiveTypeBitset;
 };
 
 

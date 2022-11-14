@@ -20,10 +20,14 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SDPIScaler.h"
 #include "Layout/ChildrenBase.h"
+#include "Widgets/Layout/SGridPanel.h"
 #include "NodeFactory.h"
 #include "Brushes/SlateBoxBrush.h"
 
 #include "ImageUtils.h"
+#include "Brushes/SlateImageBrush.h"
+#include "Styling/SlateStyle.h"
+
 
 //List of Project files
 #include "Interfaces/IProjectManager.h"
@@ -31,6 +35,8 @@
 //File picker includes
 #include "Developer/DesktopPlatform/Public/IDesktopPlatform.h"
 #include "Developer/DesktopPlatform/Public/DesktopPlatformModule.h"
+
+
 
 
 // WebBrowser
@@ -62,9 +68,11 @@
 #include "ContentBrowserItem.h"
 #include "IAssetTools.h"
 #include "AssetToolsModule.h"
+#include "SAssetView.h"
 
 //Editor
 #include "LevelEditor.h"
+#include "PropertyEditor/Private/SDetailCategoryTableRow.h"
 
 //Collections
 #include "CollectionManagerTypes.h"
@@ -76,6 +84,11 @@
 
 //Texture
 #include "Factories/TextureFactory.h"
+
+#include "Styling/SlateStyleMacros.h"
+
+//uint16 FRealBandUIManagerImpl::ActiveTypeBitset = TNumericLimits<uint16>::Max();
+
 
 DEFINE_LOG_CATEGORY(LogManager);
 
@@ -89,12 +102,16 @@ const FName RealBandTabName = "RealBandTab";
 FRealBandUIManagerImpl::FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> inFRealBandAssetImporter):
 	                    pFRealBandAssetImporter(inFRealBandAssetImporter)
 {
-
+	ObjUserPreference.ActiveTypeBitset = TNumericLimits<uint16>::Max();
 }
 
 FRealBandUIManagerImpl::~FRealBandUIManagerImpl()
 {
-	
+	//FRealBandUIManager::Instance.Reset();
+	//pFRealBandAssetLoader.Reset();
+	pOverlay.Reset();
+	pCanvas.Reset();
+	//pFRealBandAssetLoader.Reset();
 	int test = 1;
 }
 void FRealBandUIManagerImpl::Initialize()
@@ -152,7 +169,7 @@ void FRealBandUIManager::Initialize(TSharedPtr<FRealBandAssetImporter> iFRealBan
 	Instance->Initialize();
 }
 
-TSharedPtr<STextBlock> ComboBoxTitleBlock;
+
 
 void FRealBandUIManagerImpl::CreateWindow()
 {
@@ -172,9 +189,8 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.SupportsMinimize(false)
 			
 			[
-				//SNew(SOverlay)
 				SAssignNew(pOverlay, SOverlay)
-				+ SOverlay::Slot()
+			+ SOverlay::Slot()
 			.VAlign(VAlign_Fill)
 			.HAlign(HAlign_Fill)
 			[
@@ -184,14 +200,13 @@ void FRealBandUIManagerImpl::CreateWindow()
 			[
 				SAssignNew(pCanvas, SCanvas)
 				
-				+ SCanvas::Slot()
+			+ SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
 			.Size(FVector2D(100.0f, 50.0f))
 			.Position(FVector2D(30.0f, 80.0f))
 			[
 				SNew(SButton)
-				//SNew(SButton)
 				.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.Text(FText::FromString("Local"))
@@ -206,12 +221,17 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.Position(FVector2D(150.0f, 125.0f))
 			[
 				SAssignNew(pFRealBandAssetLoader, FRealBandAssetLoader)
-			//	.AssetPathConfig(ConfigPath)
 			   .AssetPickerConfig(ConfigPicker)
-
-
 			]
-		/////////////////
+		/*+SCanvas::Slot()
+			.HAlign(HAlign_Fill)
+			.VAlign(VAlign_Fill)
+			.Size(FVector2D(730.0f, 440.0f))
+			.Position(FVector2D(150.0f, 125.0f))
+			[
+				SAssignNew(pGridPanel, SGridPanel)
+			]*/
+		///////////////////
 		+ SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
@@ -224,7 +244,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.Text(FText::FromString("Settings"))
 			.OnClicked(this, &FRealBandUIManagerImpl::LaunchSettings)
 			]
-		+ SCanvas::Slot()
+		 + SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
 			.Size(FVector2D(100.0f, 50.0f))
@@ -240,19 +260,14 @@ void FRealBandUIManagerImpl::CreateWindow()
 		    + SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
-			.Position(FVector2D(50.0f, 105.0f))
+			.Position(FVector2D(50.0f, 95.0f))
 			[
-				//SNew(SBorder)
-				//.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-				//.BorderBackgroundColor(FLinearColor(0.4352F, 0.3647F, 0.8862F))
-				//.Padding(3.0f)
-				//[
-				    SAssignNew(pSettingsBox, SBox)
-				    //SNew(SBox)
-				    .HAlign(HAlign_Center)
-		            .VAlign(VAlign_Center)
-				    .WidthOverride(400.0f)
-			       [
+			    SAssignNew(pSettingsBox, SBox)
+			    .HAlign(HAlign_Center)
+	            .VAlign(VAlign_Center)
+			    .WidthOverride(400.0f)
+				.HeightOverride(600.0f)
+			     [
 					   SNew(SBorder)
 					//   .BorderImage(FPaths::EnginePluginsDir() / TEXT("Bridge/Resources"))
 				    //   .BorderBackgroundColor(FLinearColor(0.4352F, 0.3647F, 0.8862F))
@@ -263,15 +278,16 @@ void FRealBandUIManagerImpl::CreateWindow()
 			          + SCanvas::Slot()
 			          .HAlign(HAlign_Fill)
 			          .VAlign(VAlign_Fill)
-			          .Size(FVector2D(130.0f, 50.0f))
-			          .Position(FVector2D(130.0f, 20.0f))
+			          .Size(FVector2D(530.0f, 450.0f))
+			          .Position(FVector2D(130.0f, 30.0f))
 			          [
 					     SNew(STextBlock)
-					    .AutoWrapText(true)
-			            .Text(FText::FromString("Download folder"))
+					    .AutoWrapText(false)
+			            .Text(FText::FromString("Download folder Settings"))
 				        .ColorAndOpacity(FLinearColor(0.4352F, 0.3647F, 0.8862F))
+				        .MinDesiredWidth(350.0f)
 						 //& FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText")
-						 .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+						 .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("Text.Large"))
 			         //.TextStyle(FRealBandStyle::Get(), "RealBandStyle")
 
 			           ]
@@ -280,7 +296,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 			         .HAlign(HAlign_Fill)
 			         .VAlign(VAlign_Fill)
 			         .Size(FVector2D(30.0f, 30.0f))
-			         .Position(FVector2D(130.0f, 70.0f))
+			         .Position(FVector2D(130.0f, 80.0f))
 			         [
 				         SNew(STextBlock)
 				        .AutoWrapText(true)
@@ -294,36 +310,171 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(280.0f, 30.0f))
-						 .Position(FVector2D(300.0f, 70.0f))
+						 .Position(FVector2D(300.0f, 80.0f))
 						 [
 							 SAssignNew(pAssetFolderPath, SEditableTextBox)
-						     .Text(FText::FromString("Select the Loca Path to Asset Folder"))
-						 
-
-						 //    .TextStyle(FRealBandStyle::Get(), "RealBandStyle")
+						     .Text(FText::FromString("Select the Local Path to Asset Folder"))
 
 						 ]
 					 + SCanvas::Slot()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(20.0f, 20.0f))
-						 .Position(FVector2D(590.0f, 70.0f))
+						 .Position(FVector2D(590.0f, 80.0f))
 						 [
 							 SNew(SButton)
 							 .HAlign(HAlign_Center)
 						     .VAlign(VAlign_Center)
 						     .OnClicked(this, &FRealBandUIManagerImpl::LaunchOpenFileDialog)
-							 //.Text(FText::FromString("Select the Loca Path to Asset Folder"))
 
+						 ]
 
-						 //    .TextStyle(FRealBandStyle::Get(), "RealBandStyle")
+					 //  Download folder settings Box
+					 + SCanvas::Slot()
+						 .HAlign(HAlign_Fill)
+						 .VAlign(VAlign_Fill)
+						 .Size(FVector2D(20.0f, 20.0f))
+						 .Position(FVector2D(130.0f, 120.0f))
+						 [
+							 SNew(SBox)
+							 [
+								 SNew(SHorizontalBox)
+								 + SHorizontalBox::Slot()
+						          .AutoWidth()
+						          .Padding(2, 0, 0, 0)
+						         [
+									 SNew(STextBlock)
+									 .Text(FText::FromString("Format"))
+						             .ColorAndOpacity(FLinearColor(0.4352F, 0.3647F, 0.8862F))
+						             .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+								 ]
 
+								 + SHorizontalBox::Slot()
+						           //.AutoWidth()
+						           .Padding(120, 0, 80, 0)
+								   
+						            [
+										GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_GLM, LOCTEXT("glb", "glb"))
+						            ]
+					                + SHorizontalBox::Slot()
+									.Padding(2, 0, 80, 0)
+						            [
+							            GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_FBX, LOCTEXT("fbx", "fbx"))
+						            ]
+					                
+							 ]
+						 ]
+
+					 + SCanvas::Slot()
+						 .HAlign(HAlign_Fill)
+						 .VAlign(VAlign_Fill)
+						 .Size(FVector2D(20.0f, 20.0f))
+						 //.Position(FVector2D(130.0f, 150.0f))
+						 .Position(FVector2D(480.0f, 120.0f))
+						 [
+							 SNew(SBox)
+							 [
+								 SNew(SHorizontalBox)
+								 + SHorizontalBox::Slot()
+						           .AutoWidth()
+						           .Padding(0, 0, 0, 0)
+						           [
+							           SNew(STextBlock)
+							           .Text(FText::FromString("Texture Level"))
+						               .ColorAndOpacity(FLinearColor(0.4352F, 0.3647F, 0.8862F))
+						               .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+						           ]
+
+					             + SHorizontalBox::Slot()
+						          .Padding(30, 0, 20, 0)
+						          [
+							          GetSelectedOptionToggle(SELECTOPTIONS::TWO_K, LOCTEXT("2K", "2K"))
+						          ]
+					              + SHorizontalBox::Slot()
+						          .Padding(30, 0, 20, 0)
+						          [
+							          GetSelectedOptionToggle(SELECTOPTIONS::FOUR_K, LOCTEXT("4K", "4K"))
+						          ]
+					             + SHorizontalBox::Slot()
+						         .Padding(30, 0, 20, 0)
+						          [
+							          //SNew(STextBlock)
+							          GetSelectedOptionToggle(SELECTOPTIONS::EIGHT_K, LOCTEXT("8K", "8K"))
+						          ]
+
+					        ]
+				         ]
+					 + SCanvas::Slot()
+						 .HAlign(HAlign_Fill)
+						 .VAlign(VAlign_Fill)
+						 .Size(FVector2D(20.0f, 20.0f))
+						 .Position(FVector2D(130.0f, 160.0f))
+						 [
+							 SNew(SBox)
+							 [
+								 SNew(SHorizontalBox)
+								 + SHorizontalBox::Slot()
+						          .AutoWidth()
+						          .Padding(2, 0, 0, 0)
+						          [
+							          SNew(STextBlock)
+							          .Text(FText::FromString("Texture Type"))
+						              .ColorAndOpacity(FLinearColor(0.4352F, 0.3647F, 0.8862F))
+						              .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+						          ]
+
+					             + SHorizontalBox::Slot()
+						           .Padding(85, 0, 0, 0)
+						           [
+							           GetSelectedOptionToggle(SELECTOPTIONS::DIFFUSE ,LOCTEXT("Diffuse", "Diffuse"))
+						           ]
+					             + SHorizontalBox::Slot()
+						           .Padding(85, 0, 0, 0)
+						           [
+							           GetSelectedOptionToggle(SELECTOPTIONS::NORMAL, LOCTEXT("Normal", "Normal"))
+						           ]
+							 ]
 						 ]
 					 + SCanvas::Slot()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
+						 .Size(FVector2D(20.0f, 20.0f))
+						 .Position(FVector2D(480.0f, 160.0f))
+						 [
+							 SNew(SBox)
+							 [
+								 SNew(SHorizontalBox)
+								 + SHorizontalBox::Slot()
+						           .AutoWidth()
+						           .Padding(2, 0, 0, 0)
+						        [
+							        SNew(STextBlock)
+							        .Text(FText::FromString("Mesh Level"))
+						            .ColorAndOpacity(FLinearColor(0.4352F, 0.3647F, 0.8862F))
+						            .TextStyle(&FCoreStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText"))
+						        ]
+
+					            + SHorizontalBox::Slot()
+						         .Padding(38, 0, 20, 0)
+						         [
+							         GetSelectedOptionToggle(SELECTOPTIONS::HIGH, LOCTEXT("High", "High"))
+						         ]
+					            + SHorizontalBox::Slot()
+						          .Padding(45, 0, 20, 0)
+						         [
+							         GetSelectedOptionToggle(SELECTOPTIONS::LOW, LOCTEXT("Low", "Low"))
+						         ]
+							 ]
+						 ]
+
+
+
+					 /////////////////
+					 + SCanvas::Slot()
+						 .HAlign(HAlign_Fill)
+						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(130.0f, 90.0f))
-						 .Position(FVector2D(130.0f, 130.0f))
+						 .Position(FVector2D(130.0f, 200.0f))
 						 [
 							 SNew(STextBlock)
 							 .AutoWrapText(true)
@@ -335,7 +486,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(130.0f, 120.0f))
-						 .Position(FVector2D(130.0f, 170.0f))
+						 .Position(FVector2D(130.0f, 240.0f))
 						 [
 							 SNew(STextBlock)
 							 .AutoWrapText(true)
@@ -347,36 +498,30 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(280.0f, 30.0f))
-						 .Position(FVector2D(300.0f, 170.0f))
+						 .Position(FVector2D(300.0f, 240.0f))
 						 [
 							 SAssignNew(pAssetPath,SEditableTextBox)
 							 .Text(FText::FromString("Select the Path to Asset Folder"))
-
-
-						 //    .TextStyle(FRealBandStyle::Get(), "RealBandStyle")
 
 						 ]
 					 + SCanvas::Slot()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(20.0f, 20.0f))
-						 .Position(FVector2D(590.0f, 170.0f))
+						 .Position(FVector2D(590.0f, 240.0f))
 						 [
 							 SNew(SButton)
 							 .HAlign(HAlign_Center)
 						     .VAlign(VAlign_Center)
 						     .OnClicked(this, &FRealBandUIManagerImpl::LaunchOpenFileDialog)
 
-
-						 //    .TextStyle(FRealBandStyle::Get(), "RealBandStyle")
-
 						 ]
 
 					 + SCanvas::Slot()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
-						 .Size(FVector2D(130.0f, 120.0f))
-						 .Position(FVector2D(130.0f, 220.0f))
+						 .Size(FVector2D(330.0f, 320.0f))
+						 .Position(FVector2D(130.0f, 270.0f))
 						 [
 							 SNew(STextBlock)
 							 .AutoWrapText(true)
@@ -388,7 +533,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(130.0f, 40.0f))
-						 .Position(FVector2D(300.0f, 220.0f))
+						 .Position(FVector2D(300.0f, 270.0f))
 						 [
 							 
 							 SNew(SHorizontalBox)
@@ -404,15 +549,13 @@ void FRealBandUIManagerImpl::CreateWindow()
 						         
 						         .OnSelectionChanged_Lambda([this](TSharedPtr<FString> Value, ESelectInfo::Type)
 									 {
-										// SAssignNew(ComboBoxTitleBlock, STextBlock).Text(FText::FromString("ComboLabel"));
-											 //	 SNew(STextBlock).Text(FText::FromString(*SelectedProject.Get()));
-									//		 if (SelectedProject.Get())
+							
 											 {
 												 SelectedProject = Value;
-												 //ProjectsCombo->ClearSelection();
+							
 												 ProjectsCombo->SetSelectedItem(Value);
 												
-												 //TSharedPtr<FString> ValueS = ProjectsCombo->GetSelectedItem();
+							
 												 ProjectsCombo->RefreshOptions();
 												 pTextBlock->SetText(FText::FromString(*SelectedProject.Get()));
 											 }
@@ -424,7 +567,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 									
 						         .OnGenerateWidget_Lambda([this](TSharedPtr< FString > Value)
 							     {
-									//	 SelectedProject = Value;
+
 								     return SNew(STextBlock).Text(FText::FromString(*Value));
 									
 									 })
@@ -440,7 +583,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .HAlign(HAlign_Fill)
 						 .VAlign(VAlign_Fill)
 						 .Size(FVector2D(100.0f, 50.0f))
-						 .Position(FVector2D(690.0f, 290.0f))
+						 .Position(FVector2D(690.0f, 400.0f))
 						 [
 							 SNew(SButton)
 							 .HAlign(HAlign_Center)
@@ -448,8 +591,18 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 .Text(FText::FromString("Apply"))
 						 .OnClicked(this, &FRealBandUIManagerImpl::ApplySettings)
 
-
-					 //    .TextStyle(FRealBandStyle::Get(), "RealBandStyle")
+						 ]
+					 + SCanvas::Slot()
+						 .HAlign(HAlign_Fill)
+						 .VAlign(VAlign_Fill)
+						 .Size(FVector2D(100.0f, 50.0f))
+						 .Position(FVector2D(490.0f, 400.0f))
+						 [
+							 SNew(SButton)
+							 .HAlign(HAlign_Center)
+						 .VAlign(VAlign_Center)
+						 .Text(FText::FromString("Reset"))
+						 .OnClicked(this, &FRealBandUIManagerImpl::ResetSettings)
 
 						 ]
 
@@ -470,6 +623,55 @@ void FRealBandUIManagerImpl::CreateWindow()
 		FSlateApplication::Get().AddWindow(pDialogMainWindow.ToSharedRef());
 
 		pSettingsBox->SetVisibility(EVisibility::Hidden);
+		pFRealBandAssetLoader->SetVisibility(EVisibility::Collapsed);
+		//
+	//	const FSlateBrush* WarningIcon = FEditorStyle::GetBrush("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset\\00001_oldCamera2\\00001_render_png_perspective_oldCamera2.png");
+	//	
+
+	//	TSharedRef< FSlateStyleSet > Style = MakeShareable(new FSlateStyleSet("TestStyle"));
+	//	Style->SetContentRoot(IPluginManager::Get().FindPlugin("RealBandImporter")->GetBaseDir() / TEXT("Resources"));
+	//	const FVector2D Icon20(20.0f, 20.0f);
+	//	Style->Set("RealBandImporter.PluginAction", new IMAGE_BRUSH(TEXT("Asset"), Icon20));
+
+	//	//FString IconDir("C:\\Assets\\Asset1.png");
+
+	//	//FString DefaultImage = TEXT("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset\\00001_oldCamera2\\00001_render_png_perspective_oldCamera2.png");
+	//	FString DefaultImage = TEXT("C:\\Assets\\testAsset.png");
+	//	UObject* ImageResource = FindObject<UObject>(ANY_PACKAGE, *DefaultImage);
+
+	//	const FVector2D Icon40x40(40.0f, 40.0f);
+	//	FSlateImageBrush* pBrush = new FSlateImageBrush(RootToContentDir(TEXT("Asset.png")), Icon40x40);
+	////	pBrush->SetResourceObject(ImageResource);
+ //       
+	//	pGridPanel->AddSlot(1, 0)
+	//		//	.VAlign(VAlign_Center)
+	//		[
+	//			SNew(SImage)
+	//			//.Image(FEditorStyle::GetBrush(pGridPanel->GetIconStyleName(EPlatformIconSize::Normal)))
+	//		.Image(pBrush)
+	//		
+	//		.DesiredSizeOverride(Icon40x40)
+	//		
+	//		]
+	//	.Padding(20,0,40,0)
+	//	    
+	//	;
+	//	
+	//	//.Padding(0, 0, 10, 0)
+
+	//	pGridPanel->AddSlot(2, 0)
+	//		//	.VAlign(VAlign_Center)
+	//		[
+	//			SNew(SImage)
+	//			//.Image(FEditorStyle::GetBrush(pGridPanel->GetIconStyleName(EPlatformIconSize::Normal)))
+	//		.Image(WarningIcon)
+	//		.DesiredSizeOverride(Icon40x40)
+	//		];
+
+		
+
+		
+		//
 
 	}
 	else
@@ -481,6 +683,8 @@ void FRealBandUIManagerImpl::CreateWindow()
 	pDialogMainWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 		{
 		//	FRealBandUIManager::Instance.Reset();
+		//	pFRealBandAssetLoader.Reset();
+		
 			pDialogMainWindow.Reset();
 		}));
 	
@@ -503,6 +707,47 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 
 }
+
+
+TSharedRef<SHorizontalBox> FRealBandUIManagerImpl::GetSelectedOptionToggle(SELECTOPTIONS type ,const FText& Text)
+{
+	
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+		
+		[
+			SNew(SCheckBox)
+			.IsChecked(ECheckBoxState::Checked)
+		    
+		.OnCheckStateChanged(this,&FRealBandUIManagerImpl::OnTypeChanged, type)
+		]
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(4.0f, 0.0f, 10.0f, 0.0f)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(Text)
+		    
+		];
+}
+
+void FRealBandUIManagerImpl::OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS Type)
+{
+	const uint16 Mask = 1 << Type;
+	switch (CheckState)
+	{
+	case ECheckBoxState::Checked:
+		ObjUserPreference.ActiveTypeBitset |= Mask;
+		break;
+	default:
+		ObjUserPreference.ActiveTypeBitset &= ~Mask;
+		break;
+	}
+}
+
+
 
 
 void FRealBandUIManagerImpl::HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo)
@@ -528,6 +773,7 @@ FReply FRealBandUIManagerImpl::LaunchSettings()
 	pSettingsBox->SetVisibility(EVisibility::Visible);
 	pImport->SetVisibility(EVisibility::Collapsed);
 	pFRealBandAssetLoader->SetVisibility(EVisibility::Collapsed);
+	pAssetFolderPath->SetText(FText::FromString("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset"));
 	return FReply::Handled();
 }
 
@@ -552,317 +798,40 @@ FReply FRealBandUIManagerImpl::OnImportBtnClicked()
 	}
 
 	
-	pFRealBandAssetImporter->ImportSelectedAssets(AssetList, pAssetPath->GetText());
+	pFRealBandAssetImporter->ImportSelectedAssets(AssetList, pAssetFolderPath->GetText(), ObjUserPreference);
 	
 	return FReply::Handled();
 }
 
-
-FReply FRealBandUIManagerImpl::ApplySettingsEx()
-{
-	pSettingsBox->SetVisibility(EVisibility::Collapsed);
-	pImport->SetVisibility(EVisibility::Visible);
-
-	//FString TexDir("C:\\Program Files\\Epic Games\\UE_5.0\\Engine\\Content\\Editor\\Slate\\Icons\\AssetIcons\\CameraBlockingVolume_64x.png");
-	FString TexDir("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset\\00001_oldCamera2\\00001_render_png_concept_oldCamera2.png");
-	FString SourceImagePath = FPaths::ConvertRelativePathToFull(TexDir);
-	
-	UTexture2D* pTexture = nullptr;
-	//pTexture = ThumbnailGenerator::GenerateThumbnailFromFile(SourceImagePath);
-	pTexture = FImageUtils::ImportFileAsTexture2D(TexDir);
-	pTexture->AddToRoot();
-		
-	
-
-	return FReply::Handled();
-}
 
 FReply FRealBandUIManagerImpl::ApplySettings()
 {
 	if(pFRealBandAssetLoader->GetVisibility() == EVisibility::Visible)
 		return FReply::Handled();
 
+	
+	//bool isActive = false;
+	
+	//const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_GLM;
+	//isActive = ActiveTypeBitset & Mask;
+
+	
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
-	
 	FText AssetFolderPath = pAssetFolderPath->GetText();
+	FString fPath = AssetFolderPath.ToString();
+	ObjUserPreference.FolderPath = std::string(TCHAR_TO_UTF8(*fPath));
+
+	/*int AssetCount = 0;
+	pFRealBandAssetImporter->GetAssetsCount(AssetCount);
+	if(AssetCount <= 0 )*/
 	pFRealBandAssetImporter->CreateTexturesFromAssets(AssetFolderPath);
 
 	return FReply::Handled();
+}
 
-	FString sourceDir("RealBand");
-	FPathPickerConfig ConfigPath;
-	ConfigPath.DefaultPath = sourceDir;
-	
-	
-
-	// Create Collections
-	bool bCollection = false;
-	TArray<FCollectionNameType> collectionType;
-	if (FCollectionManagerModule::IsModuleAvailable())
-	{
-		ICollectionManager& CollectionManager = FCollectionManagerModule::GetModule().Get();
-
-	//	if (!CollectionManager.CollectionExists(FName("RealBand"), ECollectionShareType::CST_Local))
-		{
-			bCollection = CollectionManager.CreateCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, ECollectionStorageMode::Static);
-			FPermissionListOwners listOwners;
-			CollectionManager.GetCollectionNames(ECollectionShareType::CST_Local, listOwners);
-
-			FString Name = listOwners[0].GetPlainNameString();
-
-			FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
-			collectionType.Add(collectObj);
-		}
-		//else
-		//{
-		//	//FCollectionNameType collectObj(FName(Name), ECollectionShareType::CST_Local);
-		//	FCollectionNameType collectObj(FName("/Engine/RealBand"), ECollectionShareType::CST_Local);
-		//	collectionType.Add(collectObj);
-		//}
-	}
-
-	//pFRealBandAssetImporter->ImportGlm();
-	return FReply::Handled();
-	//pFRealBandAssetImporter->ImportFbx(FString(""));
-
-	// Asset Handling 
-	TArray<FAssetData> AssetData;
-	// FBX
-	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
-	UFbxFactory* FbxFactory = NewObject<UFbxFactory>(UFbxFactory::StaticClass());
-	FbxFactory->SetDetectImportTypeOnImport(false);
-	
-	//GIsAutomationTesting = true;
-	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-	//FString FbxFileToImport("C:\\Assets\\XOM_FBX.fbx");
-	FString FbxFileToImport("C:\\Assets\\cadnvas\\basketballcourt.FBX");
-	TArray<FString> CurFileToImport;
-	CurFileToImport.Add(FbxFileToImport);
-	//FString ImportAssetPath = TEXT("/Game");
-	//FString ImportAssetPath = TEXT("/Engine/Materials");
-	FString ImportAssetPath = TEXT("/Engine/RealBand");
-	
-	bool bSyncToBrowser = false;
-	TArray<UObject*>  ImportedObjects = AssetToolsModule.Get().ImportAssets(CurFileToImport, ImportAssetPath, FbxFactory,
-		                                                                    bSyncToBrowser,nullptr,true);
-	ContentBrowserModule.Get().ForceShowPluginContent(false);
-	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedObjects);
-	AssetData.Append(ImportedObjects);
-
-
-	TArray<FAssetData> AssetDataList;
-	TArray<FString> APath;
-	APath.Add(TEXT("/Engine/RealBand"));
-	TArray<FName> PackageNames;
-	AssetViewUtils::GetAssetsInPaths(APath, AssetDataList);
-
-	
-
-	TArray<FName> PackagePaths;
-	PackagePaths.Add(FName("/Engine/RealBand"));
-	
-	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
-	//TODO: Refresh the asset view
-//	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
-
-//	AssetViewUtils::MoveAssets(ImportedObjects, TEXT("C:\\Assets\\User"));
-//	return FReply::Handled();;
-
-	
-
-	// GLTF
-	FDatasmithSceneSource SomeCADFileSource;
-	//SomeCADFileSource.SetSourceFile("C:\\Assets\\STONE_GLB.glb");
-	SomeCADFileSource.SetSourceFile("C:\\Assets\\planeye\\planeye.glb");
-	//TSharedPtr<IDatasmithTranslator> TranslatorForCADFiles = FDatasmithTranslatorManager::Get().SelectFirstCompatible(SomeCADFileSource);
-	FLevelEditorModule* LevelEditorModule = FModuleManager::GetModulePtr<FLevelEditorModule>(TEXT("LevelEditor"));
-	TSharedPtr<IAssetViewport> ActiveLevelViewport = LevelEditorModule->GetFirstActiveViewport();
-	
-
-	using namespace UE::DatasmithImporter;
-	//const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\STONE_GLB.glb");
-	const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\planeye\\planeye.glb");
-	TSharedPtr<FExternalSource> ExternalSourcePtr = IExternalSourceModule::GetOrCreateExternalSource(SourceUri);
-	const TSharedPtr<IDatasmithTranslator>& TranslatorPtr = ExternalSourcePtr->GetAssetTranslator();
-	FDatasmithTranslatorCapabilities OutCapabilities;
-	TranslatorPtr->Initialize(OutCapabilities);
-	TranslatorPtr->SetSource(SomeCADFileSource);
-	FDatasmithImportContext ImportContext(ExternalSourcePtr.ToSharedRef(), true, FName(TEXT("DatasmithLibrary")),
-		FText());
-	const bool bSilent = false; // don't pop options window
-	
-	//ImportContext.InitOptions(nullptr, TOptional<FString>(), bSilent);
-	//ImportContext.InitOptions(nullptr, FString("C:\\Assets\\STONE_GLB.glb"), bSilent);
-	//ImportContext.InitOptions(nullptr, FString("C:\\Assets\\planeye\\planeye.glb"), bSilent);
-	ImportContext.InitOptions(nullptr, FString("/Engine/RealBand"), bSilent);
-	if (TSharedPtr<IDatasmithScene> LoadedScene = ExternalSourcePtr->TryLoad())
-	{
-		ImportContext.InitScene(LoadedScene.ToSharedRef());
-		
-	}
-	
-	
-
-	ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand");
-	//ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("RealBand");
-	ImportContext.FeedbackContext = GWarn;
-	
-	//ImportContext.FilteredScene = FDatasmithSceneFactory::DuplicateScene(ImportContext.Scene.ToSharedRef());
-	ImportContext.SceneName = FDatasmithUtils::SanitizeObjectName(ImportContext.Scene->GetName());
-	ImportContext.ObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
-	ImportContext.bUserCancelled = false;
-	ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
-	//ImportContext.AssetsContext.ReInit(FString("RealBand"));
-	
-	// We do not want to import into any View 
-	//ImportContext.ActorsContext.ImportWorld = GWorld; // Make sure actors are imported(into the current world)
-
-
-	// ImportDatasmithscene already does this
-	//FDatasmithImporter::ImportTextures(ImportContext);
-	//FDatasmithImporter::ImportMaterials(ImportContext);
-
-	//FDatasmithImporter::ImportStaticMeshes(ImportContext);
-	//FDatasmithStaticMeshImporter::PreBuildStaticMeshes(ImportContext);
-	
-
-//	TSharedRef<IDatasmithScene> LoadedScene = FDatasmithSceneFactory::CreateScene(L"STONE_GLB");
-//	ImportContext.InitScene(LoadedScene);
-	bool bUserCancelled = false;
-	bool bImport = DatasmithImportFactoryImpl::ImportDatasmithScene(ImportContext, bUserCancelled);
-	TArray<FName> AssetClasses;
-	TArray<AActor*> Actors = ImportContext.GetImportedActors();
-	TArray<UObject*>  ImportedActors;
-	for (AActor* Actor : Actors)
-	{
-		FString packagePath = Actor->GetPackage()->GetPathName();
-	//	Actor->GetPackage()->SetLoadedPath(FPackagePath());
-		UObject* ActorObject = dynamic_cast<UObject*>(Actor);
-		UClass *AClass = Actor->GetClass();
-		ImportedActors.Add(ActorObject);
-		AssetData.Add(ActorObject);
-		AssetClasses.Add(AClass->GetFName());
-	}
-
-	ImportedActors.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
-	AssetData.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
-
-	// Add to the browser
-	
-	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
-	
-
-	bool bAdded = false;
-	TArray<FAssetData> AssetsInPackages;
-	IAssetRegistry* AssetRegistry = &AssetRegistryModule.Get();
-	FARFilter Filter;
-	Filter.bIncludeOnlyOnDiskAssets = false;
-	Filter.PackagePaths = PackagePaths;
-	TArray<FAssetData> AsstInPackages;
-	AssetRegistry->GetAssets(Filter, AsstInPackages);
-	TSet<FName> ObjectPathsToAddToCollection;
-	bool bCollect = false;
-	for (const FAssetData& AsstData : AsstInPackages)
-	{
-		ObjectPathsToAddToCollection.Add(AsstData.ObjectPath);
-	}
-	if (ObjectPathsToAddToCollection.Num() > 0)
-	{
-		bCollect = FCollectionManagerModule::GetModule().Get().AddToCollection(FName("RealBand"), ECollectionShareType::CST_Local, ObjectPathsToAddToCollection.Array());
-		if (bCollect)
-		{
-			if (!FCollectionManagerModule::GetModule().Get().SaveCollection(FName("RealBand"), ECollectionShareType::CST_Local))
-			{
-				UE_LOG(LogManager, Display, TEXT("Failed to Save Collection"));
-			}
-		}
-	}
-
-	if (bCollection)
-	{
-		FString collectString;
-		TArray<FName> PackageNm;
-		
-		
-		for (FAssetData & ObjectAsset : AssetData)
-		{
-			
-			const FName & ObjectPath = ObjectAsset.ObjectPath;
-			UPackage *PackageA = ObjectAsset.GetPackage();
-			FName pName = PackageA->FileName;
-			UObject* PackObject = Cast<UObject>(PackageA);
-			PackageNm.Add(PackObject->GetFName());
-			;
-			
-		}
-
-		//const bool bCollectionSucceeded = IAssetManagerEditorModule::Get().WriteCollection(FName("RealBand"), 
-		//	                                                                               ECollectionShareType::CST_Local, PackagePaths, true);
-		
-		//IAssetManagerEditorModule::Get().WriteCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, PackageNames, true);
-		//bool bSuccess = FAssetManagerEditorModule::GetModule().Get().WriteCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local,PackageNames,true);
-		if (bCollect)
-		{
-			collectString = FCollectionManagerModule::GetModule().Get().GetCollectionsStringForObject(FName(TEXT("/Engine/RealBand/XOM_FBX")), ECollectionShareType::CST_Local);
-		}
-
-		//const bool bCollectionSucceeded = FCollectionManagerModule::GetModule().Get().WriteCollection(FirstAssetName, ShareType, PackageNameSet, true);
-		/*if (bCollectionSucceeded)
-		{
-			CollectionManager.ReparentCollection(FirstAssetName, ShareType, ParentName, ShareType);
-		}
-
-		TArray<FCollectionNameType> CollectionNamesAndTypes;
-		CollectionManager.GetCollectionsContainingObject(FName("/Engine"), CollectionNamesAndTypes);
-		FPermissionListOwners ownersList;
-		CollectionManager.GetCollectionNames(ECollectionShareType::CST_All, ownersList);*/
-	}
-	
-
-	//ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
-
-	return FReply::Handled();
-	
-	
-	ConfigPath.OnPathSelected = FOnPathSelected::CreateSP(this, &FRealBandUIManagerImpl::HandlePathSelected);
-	ConfigPath.SetPathsDelegates.Add(&SetPathsDelegate);
-	//AssetPicker->GetAssetView()->SetSourcesData(DefaultSourcesData);
-	//TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
-	
-	
-	FAssetPickerConfig ConfigPicker;
-	ConfigPicker.SelectionMode = ESelectionMode::Single;
-	ConfigPicker.Filter.bRecursiveClasses = true;
-	//ConfigPicker.Filter.ClassNames = AssetClasses;
-	ConfigPicker.Filter.bRecursivePaths = true;
-	//ConfigPicker.Filter.PackagePaths= PackagePaths;
-	ConfigPicker.Collections = collectionType;
-	ConfigPicker.InitialAssetViewType = EAssetViewType::Tile;
-	ConfigPicker.bFocusSearchBoxWhenOpened = true;
-	ConfigPicker.bAllowNullSelection = true;
-	ConfigPicker.bAllowDragging = false;
-	ConfigPicker.ThumbnailLabel = EThumbnailLabel::Type::AssetName;
-	//ConfigPicker.AdditionalReferencingAssets = AssetData;
-	ConfigPicker.bAutohideSearchBar = false;
-	TArray<FString> selectedPath;
-	selectedPath.Add(sourceDir);
-	
-	// Call the Asset Viewer
-	pCanvas->AddSlot()
-		.HAlign(HAlign_Fill)
-		.VAlign(VAlign_Fill)
-		.Size(FVector2D(730.0f, 440.0f))
-		.Position(FVector2D(150.0f, 125.0f))
-		[
-			SAssignNew(pFRealBandAssetLoader, FRealBandAssetLoader)
-			.AssetPathConfig(ConfigPath)
-		    .AssetPickerConfig(ConfigPicker)
-		    
-		    
-		];
-	
+FReply FRealBandUIManagerImpl::ResetSettings()
+{
 	return FReply::Handled();
 }
 
@@ -905,12 +874,6 @@ void FRealBandUIManagerImpl::UpdateCollections(const FName & CollectionName,cons
 	}
 }
 
-void  FRealBandUIManagerImpl::HandlePathSelected(const FString& NewPath)
-{
-	TArray<FString> NewPaths;
-	NewPaths.Add("C:\\Program Files\\Epic Games\\UE_5.0\\Engine\\Content\\Functions\\Engine_MaterialFunctions01\\ImageAdjustment");
-	SetPathsDelegate.Execute(NewPaths);
-}
 
 FReply FRealBandUIManagerImpl::LaunchOpenFileDialog()
 {

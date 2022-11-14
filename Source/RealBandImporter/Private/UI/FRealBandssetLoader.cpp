@@ -25,15 +25,8 @@
 
 FRealBandAssetLoader::~FRealBandAssetLoader()
 {
-
+	
 }
-
-
-void FRealBandAssetLoader::SetAssetFolder(const FString & FolderPath)
-{
-	int test = 1;
-}
-
 
 
 void FRealBandAssetLoader::Construct(const FArguments& InArgs)
@@ -41,19 +34,12 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 	OnAssetsActivated = InArgs._AssetPickerConfig.OnAssetsActivated;
 	OnAssetSelected = InArgs._AssetPickerConfig.OnAssetSelected;
 	OnAssetEnterPressed = InArgs._AssetPickerConfig.OnAssetEnterPressed;
-	
-	/*for (auto DelegateIt = InArgs._AssetPickerConfig.SyncToAssetsDelegates.CreateConstIterator(); DelegateIt; ++DelegateIt)
-	{
-		if ((*DelegateIt) != NULL)
-		{
-			(**DelegateIt) = FSyncToAssetsDelegate::CreateSP(this, &FRealBandAssetLoader::SyncToAssets);
-		}
-	}*/
 
 	if (InArgs._AssetPickerConfig.bFocusSearchBoxWhenOpened)
 	{
 		RegisterActiveTimer(0.f, FWidgetActiveTimerDelegate::CreateSP(this, &FRealBandAssetLoader::SetFocusPostConstruct));
 	}
+
 
 	TSharedRef<SVerticalBox> VerticalBox = SNew(SVerticalBox);
 	ChildSlot
@@ -127,7 +113,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 			SAssignNew(AssetViewPtr, SAssetView)
 			.InitialViewType(EAssetViewType::Tile)
 		    .InitialSourcesData(CurrentSourcesData)
-		    .InitialThumbnailSize(EThumbnailSize::Small)
+		    .InitialThumbnailSize(EThumbnailSize::Medium)
 		    .OnItemsActivated(this, &FRealBandAssetLoader::HandleItemsActivated)
 		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleSearchSettingsChanged)
 		    .InitialCategoryFilter(EContentBrowserItemCategoryFilter::IncludeAssets)
@@ -137,6 +123,9 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		    .OnSearchOptionsChanged(this, &FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged)
 		    .OnItemSelectionChanged(this, &FRealBandAssetLoader::HandleItemSelectionChanged)
 		    .OwningContentBrowser(nullptr)
+		    .AllowThumbnailEditMode(true)
+		    .FillEmptySpaceInTileView(true)
+		    
 		    
 		       
 		];
@@ -150,7 +139,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		TextFilter->SetIncludeAssetPath(AssetViewPtr->IsIncludingAssetPaths());
 		TextFilter->SetIncludeCollectionNames(AssetViewPtr->IsIncludingCollectionNames());
 	
-		//AssetViewPtr->RequestSlowFullListRefresh();
+		
 		AssetViewPtr->SetSourcesData(CurrentSourcesData);
 		AssetViewPtr->SetUserSearching(true);
 		// Initialize the search options
@@ -159,6 +148,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 
 	
 }
+
 
 
 void FRealBandAssetLoader::HandleAssetViewSearchOptionsChanged()
