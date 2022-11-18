@@ -8,6 +8,8 @@
 
 #include "UI/FRealBandUIManager.h"
 
+#include "Importer/FRealBandAssetImporter.h"
+
 static const FName RealBandImporterTabName("RealBandImporter");
 
 #define LOCTEXT_NAMESPACE "FRealBandImporterModule"
@@ -40,6 +42,7 @@ void FRealBandImporterModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
+	FRealBandAsstImp.Reset();
 
 	UToolMenus::UnRegisterStartupCallback(this);
 
@@ -59,8 +62,11 @@ void FRealBandImporterModule::PluginButtonClicked()
 							FText::FromString(TEXT("RealBandImporter.cpp"))
 					   );
 	//FMessageDialog::Open(EAppMsgType::Ok, DialogText);
-
-	FRealBandUIManager::Initialize();
+	//TSharedPtr<FRealBandAssetImporter> FRealBandAsstImp = MakeShareable(new FRealBandAssetImporter);
+	FRealBandAsstImp = MakeShareable(new FRealBandAssetImporter);
+	FRealBandAsstImp->Init();
+	FRealBandUIManager::Initialize(FRealBandAsstImp);
+	
 }
 
 void FRealBandImporterModule::RegisterMenus()
