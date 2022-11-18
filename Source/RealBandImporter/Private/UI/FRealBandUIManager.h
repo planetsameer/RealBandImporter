@@ -47,7 +47,10 @@ private:
 	TSharedPtr<SWebBrowser> WebBrowserWidget;
 	TSharedPtr<SEditableTextBox> pAssetPath;
 	TSharedPtr<SEditableTextBox> pAssetFolderPath;
-	TSharedPtr <SGridPanel> pGridPanel;
+	TSharedPtr <SCanvas> pSettingsCanvasBox;
+	TArray< TSharedPtr <SCheckBox>> OptionsFormat;
+	TSharedPtr<SHorizontalBox> pHBox;
+	TSharedPtr<SCheckBox> pChkBox;
 
 	FReply LaunchSettings();
 	FReply OnLocal();
@@ -55,6 +58,7 @@ private:
 	FReply ResetSettings();
 	FReply OnImportBtnClicked();
 	FReply LaunchOpenFileDialog();
+	void OnFolderPathChanged(const FText& ChangedText);
 	void HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo);
 	TArray<TSharedPtr <FString>> Array_Resolutions; 
 	TSharedPtr<FString> SelectedProject;
@@ -69,11 +73,9 @@ private:
 	TSharedPtr<FRealBandAssetImporter> pFRealBandAssetImporter;
 	TSharedPtr<SButton> ExpanderArrow;
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
-	TSharedRef<SHorizontalBox> GetSelectedOptionToggle(SELECTOPTIONS,const FText& Text);
+	TSharedRef<SHorizontalBox> GetSelectedOptionToggle(SELECTOPTIONS , const FText& Text);
 	USRPREFERENCE ObjUserPreference;
-	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS Type);
-	
-	
+	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS  Type );
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );

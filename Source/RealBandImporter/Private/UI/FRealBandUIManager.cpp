@@ -27,7 +27,7 @@
 #include "ImageUtils.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Styling/SlateStyle.h"
-
+#include "Styling/StyleColors.h"
 
 //List of Project files
 #include "Interfaces/IProjectManager.h"
@@ -112,6 +112,7 @@ FRealBandUIManagerImpl::~FRealBandUIManagerImpl()
 	pOverlay.Reset();
 	pCanvas.Reset();
 	//pFRealBandAssetLoader.Reset();
+	ObjUserPreference.ActiveTypeBitset = TNumericLimits<uint16>::Max();
 	int test = 1;
 }
 void FRealBandUIManagerImpl::Initialize()
@@ -187,7 +188,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.ClientSize(FVector2D(1000, 650))
 			.SupportsMaximize(false)
 			.SupportsMinimize(false)
-			
+			.SizingRule(ESizingRule::UserSized)
 			[
 				SAssignNew(pOverlay, SOverlay)
 			+ SOverlay::Slot()
@@ -251,7 +252,6 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.Position(FVector2D(750.0f, 5.0f))
 			[
 				SAssignNew(pImport, SButton)
-				//SNew(SButton)
 				.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.Text(FText::FromString("Import"))
@@ -260,26 +260,38 @@ void FRealBandUIManagerImpl::CreateWindow()
 		    + SCanvas::Slot()
 			.HAlign(HAlign_Fill)
 			.VAlign(VAlign_Fill)
-			.Position(FVector2D(50.0f, 95.0f))
+			.Size(FVector2D(850.0f, 500.0f))
+			.Position(FVector2D(140.0f, 95.0f))
 			[
+				SAssignNew(pSettingsWindow, SWindow)
+				.Title(FText::FromString("Settings"))
+				//.ClientSize(FVector2D(300, 300))
+				.Style(&FCoreStyle::Get().GetWidgetStyle<FWindowStyle>("Window"))
+				
+				//.UseOSWindowBorder(true)
+				.SupportsMaximize(false)
+				.SupportsMinimize(false)
+				[
 			    SAssignNew(pSettingsBox, SBox)
-			    .HAlign(HAlign_Center)
-	            .VAlign(VAlign_Center)
+			    //.HAlign(HAlign_Center)
+	            //.VAlign(VAlign_Center)
 			    .WidthOverride(400.0f)
 				.HeightOverride(600.0f)
-			     [
-					   SNew(SBorder)
+			     [ 
+				
+					 //  SNew(SBorder)
 					//   .BorderImage(FPaths::EnginePluginsDir() / TEXT("Bridge/Resources"))
 				    //   .BorderBackgroundColor(FLinearColor(0.4352F, 0.3647F, 0.8862F))
 				       
-				       .Padding(3.0f)
-				     [
-			           SNew(SCanvas)
+				     //  .Padding(3.0f)
+				     //[
+					 SAssignNew(pSettingsCanvasBox, SCanvas)
+			          // SNew(SCanvas)
 			          + SCanvas::Slot()
 			          .HAlign(HAlign_Fill)
 			          .VAlign(VAlign_Fill)
 			          .Size(FVector2D(530.0f, 450.0f))
-			          .Position(FVector2D(130.0f, 30.0f))
+			          .Position(FVector2D(80.0f, 30.0f))
 			          [
 					     SNew(STextBlock)
 					    .AutoWrapText(false)
@@ -314,6 +326,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 						 [
 							 SAssignNew(pAssetFolderPath, SEditableTextBox)
 						     .Text(FText::FromString("Select the Local Path to Asset Folder"))
+						     .OnTextChanged(this,&FRealBandUIManagerImpl::OnFolderPathChanged)
 
 						 ]
 					 + SCanvas::Slot()
@@ -351,16 +364,22 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 								 + SHorizontalBox::Slot()
 						           //.AutoWidth()
-						           .Padding(120, 0, 80, 0)
+								//	 .Padding(120, 0, 80, 0)
+						           .Padding(120, 0, 50, 0)
 								   
 						            [
-										GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_GLM, LOCTEXT("glb", "glb"))
+										GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_GLM,  LOCTEXT("glb", "glb"))
 						            ]
 					                + SHorizontalBox::Slot()
-									.Padding(2, 0, 80, 0)
+									.Padding(2, 0, 60, 0)
 						            [
-							            GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_FBX, LOCTEXT("fbx", "fbx"))
+							            GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_FBX,LOCTEXT("fbx", "fbx"))
 						            ]
+									+ SHorizontalBox::Slot()
+									.Padding(2, 0, 60, 0)
+									[
+										GetSelectedOptionToggle(SELECTOPTIONS::FORMAT_OBJ,LOCTEXT("obj", "obj"))
+									]
 					                
 							 ]
 						 ]
@@ -426,7 +445,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 					             + SHorizontalBox::Slot()
 						           .Padding(85, 0, 0, 0)
 						           [
-							           GetSelectedOptionToggle(SELECTOPTIONS::DIFFUSE ,LOCTEXT("Diffuse", "Diffuse"))
+							           GetSelectedOptionToggle(SELECTOPTIONS::DIFFUSE,LOCTEXT("Diffuse", "Diffuse"))
 						           ]
 					             + SHorizontalBox::Slot()
 						           .Padding(85, 0, 0, 0)
@@ -462,7 +481,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 					            + SHorizontalBox::Slot()
 						          .Padding(45, 0, 20, 0)
 						         [
-							         GetSelectedOptionToggle(SELECTOPTIONS::LOW, LOCTEXT("Low", "Low"))
+							         GetSelectedOptionToggle(SELECTOPTIONS::LOW,LOCTEXT("Low", "Low"))
 						         ]
 							 ]
 						 ]
@@ -606,8 +625,10 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 						 ]
 
-					 ]// SBorder
+					 //]// SBorder
+					 
 			      ]
+				  ]// Settings Window
 				//]
 			    
 			]
@@ -622,6 +643,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 		FSlateApplication::Get().AddWindow(pDialogMainWindow.ToSharedRef());
 
+		pSettingsWindow->SetVisibility(EVisibility::Hidden);
 		pSettingsBox->SetVisibility(EVisibility::Hidden);
 		pFRealBandAssetLoader->SetVisibility(EVisibility::Collapsed);
 		//
@@ -682,37 +704,51 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 	pDialogMainWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 		{
-		//	FRealBandUIManager::Instance.Reset();
-		//	pFRealBandAssetLoader.Reset();
-		
 			pDialogMainWindow.Reset();
 		}));
-	
-//	SAssignNew(Canvas, SCanvas).FArguments(Slot().SetSize(FVector2D(700, 700)));
-	//if (Windows.Num() > 0)
-	{
-//		FVector2D MainWindowSize = Windows[0]->GetSizeInScreen();
-		float DesiredWidth = 1650;
-		float DesiredHeight = 900;
 
-		
-		//if (DesiredWidth < MainWindowSize.X && DesiredHeight < MainWindowSize.Y && Canvas->GetParentWindow().IsValid())
+	pSettingsWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 		{
-			// If Bridge is docked as a tab, the parent window will be the main window
-		
-			//Canvas->Resize(FVector2D(DesiredWidth, DesiredHeight));
-			//LocalBrowserDock->GetParentWindow()->MoveWindowTo(FVector2D((MainWindowSize.X - DesiredWidth) - 17, MainWindowSize.Y - DesiredHeight) / 2);
-		}
-	}
+
+			pSettingsWindow->SetVisibility(EVisibility::Collapsed);
+			pSettingsBox->SetVisibility(EVisibility::Collapsed);
+		}));
+
+	
 
 
 }
 
 
-TSharedRef<SHorizontalBox> FRealBandUIManagerImpl::GetSelectedOptionToggle(SELECTOPTIONS type ,const FText& Text)
+TSharedRef<SHorizontalBox> FRealBandUIManagerImpl::GetSelectedOptionToggle(SELECTOPTIONS type , const FText& Text)
 {
 	
-	return SNew(SHorizontalBox)
+	SAssignNew(pHBox, SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.AutoWidth()
+
+		[
+			SAssignNew(pChkBox, SCheckBox)
+			//SNew(SCheckBox)
+			.IsChecked(ECheckBoxState::Checked)
+		    .BorderBackgroundColor(FSlateColor(FLinearColor::Gray))
+		    //.BackgroundImage()
+
+		.OnCheckStateChanged(this, &FRealBandUIManagerImpl::OnTypeChanged,type)
+		]
+	+ SHorizontalBox::Slot()
+		.AutoWidth()
+		.Padding(4.0f, 0.0f, 10.0f, 0.0f)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(Text)
+
+		];
+
+	OptionsFormat.Add(pChkBox);
+	return pHBox.ToSharedRef();
+	/*return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		
@@ -730,19 +766,23 @@ TSharedRef<SHorizontalBox> FRealBandUIManagerImpl::GetSelectedOptionToggle(SELEC
 			SNew(STextBlock)
 			.Text(Text)
 		    
-		];
+		];*/
 }
 
 void FRealBandUIManagerImpl::OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS Type)
 {
 	const uint16 Mask = 1 << Type;
+	//const uint16 TMask = 1 << TexType;
 	switch (CheckState)
 	{
 	case ECheckBoxState::Checked:
 		ObjUserPreference.ActiveTypeBitset |= Mask;
+	//	AssetFormat = AssetFormat << Type;
+		//ObjUserPreference.ActiveTypeBitset |= TMask;
 		break;
 	default:
 		ObjUserPreference.ActiveTypeBitset &= ~Mask;
+		//ObjUserPreference.ActiveTypeBitset &= ~TMask;
 		break;
 	}
 }
@@ -762,6 +802,7 @@ void FRealBandUIManagerImpl::HandleSourceComboChanged(TSharedPtr<FString> Item, 
 FReply FRealBandUIManagerImpl::OnLocal()
 {
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
+	pSettingsWindow->SetVisibility(EVisibility::Collapsed);
 	pFRealBandAssetLoader->SetVisibility(EVisibility::Visible);
 	pImport->SetVisibility(EVisibility::Visible);
 	return FReply::Handled();
@@ -769,7 +810,7 @@ FReply FRealBandUIManagerImpl::OnLocal()
 
 FReply FRealBandUIManagerImpl::LaunchSettings()
 {
-
+	pSettingsWindow->SetVisibility(EVisibility::Visible);
 	pSettingsBox->SetVisibility(EVisibility::Visible);
 	pImport->SetVisibility(EVisibility::Collapsed);
 	pFRealBandAssetLoader->SetVisibility(EVisibility::Collapsed);
@@ -815,7 +856,7 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 	//const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_GLM;
 	//isActive = ActiveTypeBitset & Mask;
 
-	
+	pSettingsWindow->SetVisibility(EVisibility::Collapsed);
 	pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
 	FText AssetFolderPath = pAssetFolderPath->GetText();
@@ -832,6 +873,18 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 
 FReply FRealBandUIManagerImpl::ResetSettings()
 {
+
+	pAssetPath->ClearContent();
+//	pAssetFolderPath->ClearContent();
+	pAssetFolderPath->SetText(FText::FromString(""));
+	
+	for (TSharedPtr<SCheckBox> ptrChkBox : OptionsFormat)
+	{
+		ptrChkBox->SetIsChecked(ECheckBoxState::Unchecked);
+	}
+	
+	ObjUserPreference.ActiveTypeBitset &= ~(0xFF);
+
 	return FReply::Handled();
 }
 
@@ -909,6 +962,12 @@ FReply FRealBandUIManagerImpl::LaunchOpenFileDialog()
 	return FReply::Handled();
 }
 
+
+void FRealBandUIManagerImpl::OnFolderPathChanged(const FText& ChangedText)
+{
+	pAssetFolderPath->SetText(ChangedText);
+	//return FReply::Handled();
+}
 
 TSharedRef<SDockTab> FRealBandUIManagerImpl::CreatRealBandTab(const FSpawnTabArgs& Args)
 {
