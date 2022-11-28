@@ -12,6 +12,12 @@ FString PluginPath = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("RealBandI
 //#define TTF_FONT(RelativePath, ...) FSlateFontInfo(FPaths::EngineContentDir() / "Resources" / RelativePath + TEXT(".ttf"), __VA_ARGS__)
 #define TTF_FONT(RelativePath, ...) FSlateFontInfo(FPaths::Combine(TEXT("RealBandImporter"), TEXT("Resources"), TEXT("*.otf")), __VA_ARGS__)
 //#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( FPaths::Combine(TEXT("RealBandImporter"), TEXT("Resources"), TEXT(".png") ), __VA_ARGS__ )
+#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( Style->RootToContentDir( RelativePath, TEXT(".png") ), __VA_ARGS__ )
+#define IMAGE_BRUSH_SVG( RelativePath, ... ) FSlateVectorImageBrush( Style->RootToContentDir(RelativePath, TEXT(".svg")), __VA_ARGS__)
+const FVector2D Icon20x20(20.0f, 20.0f);
+const FVector2D Icon40x40(40.0f, 40.0f);
+
+
 
 void FRealBandStyle::Initialize()
 {
@@ -42,6 +48,49 @@ FName FRealBandStyle::GetStyleSetName()
 	return StyleSetName;
 }
 
+
+void FRealBandStyle::SetIcon(const FString& StyleName, const FString& ResourcePath)
+{
+	FSlateStyleSet* Style = MSStyleInstance.Get();
+
+	FString Name("RealBand");
+	Name = Name + "." + StyleName;
+	Style->Set(*Name, new IMAGE_BRUSH(ResourcePath, Icon40x40));
+
+	Name += ".Small";
+	Style->Set(*Name, new IMAGE_BRUSH(ResourcePath, Icon20x20));
+
+	FSlateApplication::Get().GetRenderer()->ReloadTextureResources();
+}
+
+void FRealBandStyle::SetSVGIcon(const FString& StyleName, const FString& ResourcePath)
+{
+	FSlateStyleSet* Style = MSStyleInstance.Get();
+
+	FString Name("RealBand");
+	Name = Name + "." + StyleName;
+	Style->Set(*Name, new IMAGE_BRUSH_SVG(ResourcePath, Icon40x40));
+
+	const FSlateBrush *pSlateBrush = Style->GetBrush(FName("RealBand.SaveIcon"));
+	if (pSlateBrush)
+	{
+		FName brushName;
+		brushName = pSlateBrush->GetResourceName();
+	}
+
+	Name += ".Small";
+	Style->Set(*Name, new IMAGE_BRUSH_SVG(ResourcePath, Icon20x20));
+
+	FSlateApplication::Get().GetRenderer()->ReloadTextureResources();
+}
+
+
+const FSlateBrush* FRealBandStyle::GetBrush(FName PropertyName, const ANSICHAR* Specifier)
+{
+	FSlateStyleSet* Style = MSStyleInstance.Get();
+	//return MSStyleInstance->GetBrush(PropertyName, Specifier);
+	return Style->GetBrush(PropertyName);
+}
 
 const ISlateStyle& FRealBandStyle::Get()
 {

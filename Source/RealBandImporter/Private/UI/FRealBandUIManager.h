@@ -18,7 +18,7 @@
 
 class FRealBandAssetLoader;
 class SGridPanel;
-
+class RealBandImportSettingsUI;
 
 //#include "SWebBrowser.h"
 //#include "UI/BrowserBinding.h"
@@ -48,10 +48,11 @@ private:
 	TSharedPtr<SEditableTextBox> pAssetPath;
 	TSharedPtr<SEditableTextBox> pAssetFolderPath;
 	TSharedPtr <SCanvas> pSettingsCanvasBox;
+	TSharedPtr <SOverlay> pSettingsOverlay;
 	TArray< TSharedPtr <SCheckBox>> OptionsFormat;
 	TSharedPtr<SHorizontalBox> pHBox;
 	TSharedPtr<SCheckBox> pChkBox;
-
+	TSharedPtr <RealBandImportSettingsUI> pRealBandImportSettings;
 	FReply LaunchSettings();
 	FReply OnLocal();
 	FReply ApplySettings();
@@ -72,10 +73,12 @@ private:
 	TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
 	TSharedPtr<FRealBandAssetImporter> pFRealBandAssetImporter;
 	TSharedPtr<SButton> ExpanderArrow;
+	TSharedPtr<SButton> pApplyButton;
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
 	TSharedRef<SHorizontalBox> GetSelectedOptionToggle(SELECTOPTIONS , const FText& Text);
 	USRPREFERENCE ObjUserPreference;
 	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS  Type );
+	FReply SavePreferences(TWeakPtr< SMenuAnchor >);
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );
