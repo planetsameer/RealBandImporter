@@ -275,31 +275,45 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 	if (AssetCount > 0)
 		return;
 
-	using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
-	//std::filesystem::path(iAssetFolder.ToString().GetCharArray());
-	TArray<FString> TextureFiles;
-	for (const auto& dirEntry : recursive_directory_iterator(iAssetFolder.ToString().GetCharArray().GetData()))
+
+	if (!iAssetFolder.IsEmpty() && std::filesystem::exists(std::filesystem::path(iAssetFolder.ToString().GetCharArray().GetData())))
 	{
-		if (dirEntry.path().extension() == ".png") {
-			if (dirEntry.path().filename().string().find("perspective") != std::string::npos)
-			{
-				TextureFiles.Add(FString(dirEntry.path().string().data()));
+		using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
+		//std::filesystem::path(iAssetFolder.ToString().GetCharArray());
+		TArray<FString> TextureFiles;
+		for (const auto& dirEntry : recursive_directory_iterator(iAssetFolder.ToString().GetCharArray().GetData()))
+		{
+			if (dirEntry.path().extension() == ".png") {
+				if (dirEntry.path().filename().string().find("perspective") != std::string::npos)
+				{
+					TextureFiles.Add(FString(dirEntry.path().string().data()));
+				}
 			}
 		}
-	}
 
-	UTextureFactory* TexFactory = NewObject<UTextureFactory>(UTextureFactory::StaticClass());
-	
-	FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
-	TArray<UObject*> ImportedTextures = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures/Prespective"),
-		NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
-	AssetCount = ImportedTextures.Num();
-	
-	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
+		UTextureFactory* TexFactory = NewObject<UTextureFactory>(UTextureFactory::StaticClass());
+
+		FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
+		TArray<UObject*> ImportedTextures = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures/Prespective"),
+			NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
+		AssetCount = ImportedTextures.Num();
+
+		UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
+	}
+	else
+	{
+		FText DialogText = FText::Format(
+			LOCTEXT("PluginButtonDialogText", "Error:Invalid Input Folder"),
+			FText::FromString(TEXT("Invalid Input Folder")),
+			FText::FromString(TEXT("RealBandImporter.cpp"))
+		);
+		FMessageDialog::Open(EAppMsgType::OkCancel, DialogText);
+		UE_LOG(LogCustom, Display, TEXT("Error:Invalid Input Folder"));
+	}
 }
 
 
-void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetList, const FText & iAssetFolder, const USRPREFERENCE& iUserPreference)
+void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetList, const USRPREFERENCE& iUserPreference)
 {
 	using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
 	//std::filesystem::path(iAssetFolder.ToString().GetCharArray());
@@ -307,10 +321,22 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 	TArray<FString> GlmFiles;
 	TArray<FString> ObjFiles;
 	TSet<FString> DiffuseFiles;
-	TSet<FString> NormalFiles;
+	std::set<std::string> NormalFiles;
 	TSet<FString> TextureFiles;
+	std::set<std::string> filesForImport;
 	
-	
+
+	bool isTexHigh = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TEXHIGH);
+	if (isTexHigh)
+	{
+		int debug = 1;
+	}
+
+	bool isTexLow = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TEXLOW);
+	if (isTexLow)
+	{
+		int debug = 1;
+	}
 
 	uint16 MaskDiff = 1 << SELECTOPTIONS::DIFFUSE;
 	//bool isDiffuse = iUserPreference.ActiveTypeBitset & MaskDiff;
@@ -369,7 +395,10 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 	if (isHigh)
 	{
 		AssetFormat = AssetFormat ^ 1 << 1;
-		Texture = Texture ^ 1 << 1;
+		if (isTexHigh)
+		{
+			Texture = Texture ^ 1 << 1;
+		}
 	}
 
 	uint16 MaskLow = 1 << SELECTOPTIONS::LOW;
@@ -377,50 +406,42 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 	if (isLow)
 	{
 		AssetFormat = AssetFormat ^ 1 << 0;
-		Texture = Texture ^ 1 << 0;
+		if (isTexLow)
+		{
+			Texture = Texture ^ 1 << 0;
+		}
 	}
 	
-	char *finalRegExp = FormatExprArray[AssetFormat-1];
-	std::set<std::string> filesForImport;
+	char *finalRegExp = FormatExprArray[--AssetFormat];
+	
 	GetFilesForImport(iUserPreference.FolderPath,finalRegExp, filesForImport);
-	for (const std::string& fileName : filesForImport)
-	{
-	//	fs::path fpath{ fs::u8path(u8"abc.txt") };
-		fs::path fpath{ fs::u8path(fileName) };
-		std::string str = fpath.extension().string();
-		if( fpath.extension().string() == ".fbx")
-			FbxFiles.Add(FString(fpath.string().data()));
+	//for (const std::string& fileName : filesForImport)
+	//{
+	////	fs::path fpath{ fs::u8path(u8"abc.txt") };
+	//	fs::path fpath{ fs::u8path(fileName) };
+	//	std::string str = fpath.extension().string();
+	//	if( fpath.extension().string() == ".fbx")
+	//		FbxFiles.Add(FString(fpath.string().data()));
 
-		if (fpath.extension().string() == ".glb")
-			GlmFiles.Add(FString(fpath.string().data()));
+	//	if (fpath.extension().string() == ".glb")
+	//		GlmFiles.Add(FString(fpath.string().data()));
 
-		if (fpath.extension().string() == ".obj")
-			ObjFiles.Add(FString(fpath.string().data()));
-	}
-	filesForImport.clear();
+	//	if (fpath.extension().string() == ".obj")
+	//		ObjFiles.Add(FString(fpath.string().data()));
+	//}
+	//filesForImport.clear();
 
-	ImportGlm(GlmFiles);
-	ImportFbx(FbxFiles);
-	ImportFbx(ObjFiles, isOBJ);
-	Texture = Texture - 1;
-//	char *testExpr = TextureExprArray[30];
-//	GetFilesForImport(iUserPreference.FolderPath, testExpr, filesForImport);
-//	testExpr = TextureExprArray[32];
-//	GetFilesForImport(iUserPreference.FolderPath, testExpr, filesForImport);
-	finalRegExp = TextureExprArray[Texture];
-	GetFilesForImport(iUserPreference.FolderPath, finalRegExp, filesForImport);
-	ImportTextures(filesForImport);
-	return;
-	/*for (std::string fileName : filesForImport)
-	{
-		fs::path fpath{ fs::u8path(fileName) };
-		std::string str = fpath.extension().string();
-		if (fpath.extension().string() == ".png")
-		{
-			ImportTexture(fpath.extension().string());
-		}
-	}*/
+	//ImportGlm(GlmFiles);
+	//ImportFbx(FbxFiles);
+	//ImportFbx(ObjFiles, isOBJ);
+	
+	char *finalTextureExpr = TextureExprArray[--Texture];
 
+	GetFilesForImport(iUserPreference.FolderPath, finalTextureExpr, filesForImport);
+//	ImportTextures(filesForImport);
+//	return;
+
+	FbxFiles.Empty();
 	for (FName AssetName : iAssetList)
 	{
 	
@@ -431,42 +452,56 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 		bool bFind = AssetName.ToString().FindLastChar('_', pos);
 		std::wstring wsubstr =  assetStr.substr(pos+1, assetStr.length());
 
-		for (const auto& dirEntry : recursive_directory_iterator(iAssetFolder.ToString().GetCharArray().GetData()))
+		for (const std::string& fileName : filesForImport)
+		//for (const auto& dirEntry : recursive_directory_iterator(iUserPreference.FolderPath))
+		//iUserPreference
 		{
 			std::string subStr(wsubstr.begin(), wsubstr.end());
-			
-			if (dirEntry.path().extension() == ".fbx") {
+			fs::path fpath{ fs::u8path(fileName) };
+			if (fpath.extension() == ".fbx") {
 
-				if (dirEntry.path().string().find(subStr) != std::string::npos)
+				if (fpath.string().find(subStr) != std::string::npos)
 				{
-					FbxFiles.Add(FString(dirEntry.path().string().data()));
+					FbxFiles.Add(FString(fpath.string().data()));
 				}
 			}
+			if (fpath.extension() == ".glb") {
 
-			if (dirEntry.path().extension() == ".glb") {
-				if (dirEntry.path().filename().string().find(subStr) != std::string::npos)
+				if (fpath.string().find(subStr) != std::string::npos)
 				{
-					GlmFiles.Add(FString(dirEntry.path().string().data()));
+					GlmFiles.Add(FString(fpath.string().data()));
 				}
 			}
+			if (fpath.extension() == ".obj") {
 
-			if (dirEntry.path().extension() == ".obj") {
-				if (dirEntry.path().filename().string().find(subStr) != std::string::npos)
+				if (fpath.string().find(subStr) != std::string::npos)
 				{
-					ObjFiles.Add(FString(dirEntry.path().string().data()));
+					ObjFiles.Add(FString(fpath.string().data()));
 				}
 			}
-
-			if (dirEntry.path().extension() == ".png") {
-				if (dirEntry.path().filename().string().find(subStr) != std::string::npos &&
-					dirEntry.path().filename().string().find("diffuse") != std::string::npos)
+			if (fpath.extension() == ".png") {
+				if (fpath.filename().string().find(subStr) != std::string::npos &&
+					fpath.filename().string().find("diffuse") != std::string::npos)
 				{
-					DiffuseFiles.Add(FString(dirEntry.path().string().data()));
+					//DiffuseFiles.Add(FString(fpath.string().data()));
+					NormalFiles.insert(fpath.string());
 				}
-				if (dirEntry.path().filename().string().find(subStr) != std::string::npos &&
-					dirEntry.path().filename().string().find("normal") != std::string::npos)
+				if (fpath.filename().string().find(subStr) != std::string::npos &&
+					fpath.filename().string().find("normal") != std::string::npos)
 				{
-					NormalFiles.Add(FString(dirEntry.path().string().data()));
+					//NormalFiles.Add(FString(fpath.string().data()));
+					NormalFiles.insert(fpath.string());
+				}
+				if (fpath.filename().string().find(subStr) != std::string::npos &&
+					(
+					     (fpath.filename().string().find("2k") != std::string::npos) ||
+					     (fpath.filename().string().find("4k") != std::string::npos) ||
+					     (fpath.filename().string().find("8k") != std::string::npos)
+					)
+					)
+				{
+					//NormalFiles.Add(FString(fpath.string().data()));
+					NormalFiles.insert(fpath.string());
 				}
 			}
 		}
@@ -474,29 +509,12 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 
 	// Import FBX
 	// Import GLM
-	if (isGLM)
-	{
 		ImportGlm(GlmFiles);
-	}
-
-	if(isFBX)
-	{
 		ImportFbx(FbxFiles);
-	}
-
-	if (isOBJ)
-	{
 		ImportFbx(ObjFiles, isOBJ);
-	}
-
-	if (isDiffuse)
-	{
-		for (FString DiffFile : DiffuseFiles)
-		{
-
-		}
+		ImportTextures(NormalFiles);
 		
-	}
+
 }
 
 

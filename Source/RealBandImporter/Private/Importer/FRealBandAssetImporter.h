@@ -28,7 +28,7 @@ public:
 	void ImportGlm(const TArray<FString>&);
 	void CreateTexturesFromAssets(const FText &);
 	void GetAssetsCount(int oAssetCount) { oAssetCount = AssetCount; }
-	void ImportSelectedAssets(const TArray<FName> &, const FText& iAssetFolder, const USRPREFERENCE & );
+	void ImportSelectedAssets(const TArray<FName> &, const USRPREFERENCE & );
 	void ApplyUserPreferences(const USRPREFERENCE &);
 	//void ImportSelectedAssets(const TArray<TSharedPtr<FAssetViewItem&>> & iAssetList) const;
 };
