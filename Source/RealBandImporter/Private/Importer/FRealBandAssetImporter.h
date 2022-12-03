@@ -1,4 +1,7 @@
+//Copyright(C) 2022 VAXPORT all rights reserved.
+
 #pragma once
+
 
 #include "CoreMinimal.h"
 
@@ -18,8 +21,8 @@ private:
 	FAssetPickerConfig ConfigPicker;
 	int AssetCount;
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
-	void GetFilesForImport(const std::string & iFolderPath, const char* iFinalRegExp, std::set<std::string>& oFilesForImport);
-	void ImportTextures(const std::set<std::string> &);
+	void GetFilesForImport(const std::wstring & iFolderPath, const char* iFinalRegExp, std::set<std::wstring>& oFilesForImport);
+	void ImportTextures(const std::set<std::wstring> &);
 public:
 	FRealBandAssetImporter();
 	void GetAssetConfig(FAssetPickerConfig& oConfigPicker);

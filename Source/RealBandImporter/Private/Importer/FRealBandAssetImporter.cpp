@@ -118,11 +118,15 @@ void FRealBandAssetImporter::Init()
 	// Create Collections
 	//CreateCollection(FName("/Engine/RealBand"));
 
+	//FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(TEXT("Version 1.5")) );
+
 	FString fPath = FPaths::ProjectSavedDir() / TEXT("Collections");
 
 
 	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	FName PathV = IContentBrowserDataModule::Get().GetSubsystem()->ConvertInternalPathToVirtual("/Engine/RealBand/Textures");
+	
+	GetMutableDefault<UContentBrowserSettings>()->SetDisplayEngineFolder(true, true);
 
 	UContentBrowserDataSubsystem* ContentBrowserData = IContentBrowserDataModule::Get().GetSubsystem();
 
@@ -143,6 +147,7 @@ void FRealBandAssetImporter::Init()
 		TArray<FString> APath;
 		//APath.Add(TEXT("/Engine/RealBand"));
 		APath.Add(TEXT("/Engine/RealBand/Textures/Prespective"));
+		
 		TArray<FName> PackageNames;
 		AssetViewUtils::GetAssetsInPaths(APath, AssetDataList);
 
@@ -150,6 +155,7 @@ void FRealBandAssetImporter::Init()
 		TArray<FName> PackagePaths;
 		//PackagePaths.Add(FName("/Engine/RealBand"));
 		PackagePaths.Add(FName("/Engine/RealBand/Textures/Prespective"));
+		
 
 		bool bAdded = false;
 		TArray<FAssetData> AssetsInPackages;
@@ -176,10 +182,13 @@ void FRealBandAssetImporter::Init()
 		FPermissionListOwners Owners;
 
 		bool bResult = CollectionManager.GetAssetsInCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, Owners);
+		
 		bResult = CollectionManager.GetAssetsInCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, Owners);
+		
 		if (!CollectionManager.CollectionExists(FName("RealBand"), ECollectionShareType::CST_All))
 		{
 			bCollection = CollectionManager.CreateCollection(FName("/Engine/RealBand"), ECollectionShareType::CST_Local, ECollectionStorageMode::Static);
+			
 			if (bCollection)
 			{
 				FPermissionListOwners listOwners;
@@ -202,6 +211,16 @@ void FRealBandAssetImporter::Init()
 				}
 
 				
+			}
+			else
+			{
+				FText DialogText = FText::Format(
+					LOCTEXT("CollectionCreateText", "Error:Failed to Create Collection"),
+					FText::FromString(TEXT("Failed to Create Collection")),
+					FText::FromString(TEXT("RealBandAssetImporter.cpp"))
+				);
+				FMessageDialog::Open(EAppMsgType::OkCancel, DialogText);
+				UE_LOG(LogCustom, Display, TEXT("Failed to Create Collection"));
 			}
 		}
 
@@ -233,7 +252,32 @@ void FRealBandAssetImporter::Init()
 				Ctx.FinalizeItem(FString("Prespective"));
 			}
 		}
-		    
+		else
+		{
+			FText DialogText = FText::Format(
+				LOCTEXT("PrespectiveTextureFolderCreateText", "Error:Failed to Create Prespective Folder"),
+				FText::FromString(TEXT("Failed to Create Prespective Folder")),
+				FText::FromString(TEXT("FRealBandAssetImporter.cpp"))
+			);
+			FMessageDialog::Open(EAppMsgType::OkCancel, DialogText);
+			UE_LOG(LogCustom, Display, TEXT("Failed to Create Prespective Folder"));
+		}
+
+		 
+		// GLB
+		ContentBrowserData->TryConvertVirtualPath(FName("/All/Engine/EngineData/RealBand/GLB"), outVPath);
+		bCanCreate = ContentBrowserData->CanCreateFolder(PathV, nullptr);
+
+		if (bCanCreate)
+		{
+
+			FContentBrowserItemTemporaryContext Ctx = ContentBrowserData->CreateFolder(FName("/All/EngineData/Engine/RealBand/GLB"));
+			bool bValidate = Ctx.ValidateItem(FString("GLB"));
+			if (bValidate)
+			{
+				Ctx.FinalizeItem(FString("GLB"));
+			}
+		}
 
 
 	    // Initialize the Asset Viewer with the existing RealBand Assets
@@ -272,8 +316,8 @@ void FRealBandAssetImporter::GetAssetConfig(FAssetPickerConfig& oConfigPicker)
 void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 {
     // do not want to re import the textures
-	if (AssetCount > 0)
-		return;
+//	if (AssetCount > 0)
+//		return;
 
 
 	if (!iAssetFolder.IsEmpty() && std::filesystem::exists(std::filesystem::path(iAssetFolder.ToString().GetCharArray().GetData())))
@@ -286,7 +330,9 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 			if (dirEntry.path().extension() == ".png") {
 				if (dirEntry.path().filename().string().find("perspective") != std::string::npos)
 				{
-					TextureFiles.Add(FString(dirEntry.path().string().data()));
+					const wchar_t *ptrDir = dirEntry.path().wstring().data();
+				//	TextureFiles.Add(FString(dirEntry.path().string().data()));
+					TextureFiles.Add(FString(dirEntry.path().wstring().data()));
 				}
 			}
 		}
@@ -299,6 +345,7 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 		AssetCount = ImportedTextures.Num();
 
 		UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
+		
 	}
 	else
 	{
@@ -315,15 +362,18 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 
 void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetList, const USRPREFERENCE& iUserPreference)
 {
+	if (iUserPreference.FolderPath.empty())
+		return;
+
 	using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
 	//std::filesystem::path(iAssetFolder.ToString().GetCharArray());
 	TArray<FString> FbxFiles;
 	TArray<FString> GlmFiles;
 	TArray<FString> ObjFiles;
 	TSet<FString> DiffuseFiles;
-	std::set<std::string> NormalFiles;
+	std::set<std::wstring> NormalFiles;
 	TSet<FString> TextureFiles;
-	std::set<std::string> filesForImport;
+	std::set<std::wstring> filesForImport;
 	
 
 	bool isTexHigh = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TEXHIGH);
@@ -413,7 +463,6 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 	}
 	
 	char *finalRegExp = FormatExprArray[--AssetFormat];
-	
 	GetFilesForImport(iUserPreference.FolderPath,finalRegExp, filesForImport);
 	//for (const std::string& fileName : filesForImport)
 	//{
@@ -452,56 +501,57 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 		bool bFind = AssetName.ToString().FindLastChar('_', pos);
 		std::wstring wsubstr =  assetStr.substr(pos+1, assetStr.length());
 
-		for (const std::string& fileName : filesForImport)
+		for (const std::wstring& fileName : filesForImport)
 		//for (const auto& dirEntry : recursive_directory_iterator(iUserPreference.FolderPath))
 		//iUserPreference
 		{
-			std::string subStr(wsubstr.begin(), wsubstr.end());
-			fs::path fpath{ fs::u8path(fileName) };
+			std::wstring subStr(wsubstr.begin(), wsubstr.end());
+			//fs::path fpath{ fs::u8path(fileName.c_str()) };
+			fs::path fpath{ fileName };
 			if (fpath.extension() == ".fbx") {
 
-				if (fpath.string().find(subStr) != std::string::npos)
+				if (fpath.wstring().find(subStr) != std::string::npos)
 				{
-					FbxFiles.Add(FString(fpath.string().data()));
+					FbxFiles.Add(FString(fpath.wstring().data()));
 				}
 			}
 			if (fpath.extension() == ".glb") {
 
-				if (fpath.string().find(subStr) != std::string::npos)
+				if (fpath.wstring().find(subStr) != std::string::npos)
 				{
-					GlmFiles.Add(FString(fpath.string().data()));
+					GlmFiles.Add(FString(fpath.wstring().data()));
 				}
 			}
 			if (fpath.extension() == ".obj") {
 
-				if (fpath.string().find(subStr) != std::string::npos)
+				if (fpath.wstring().find(subStr) != std::string::npos)
 				{
-					ObjFiles.Add(FString(fpath.string().data()));
+					ObjFiles.Add(FString(fpath.wstring().data()));
 				}
 			}
 			if (fpath.extension() == ".png") {
-				if (fpath.filename().string().find(subStr) != std::string::npos &&
-					fpath.filename().string().find("diffuse") != std::string::npos)
+				if (fpath.filename().wstring().find(subStr) != std::wstring::npos &&
+					fpath.filename().wstring().find(L"diffuse") != std::wstring::npos)
 				{
 					//DiffuseFiles.Add(FString(fpath.string().data()));
-					NormalFiles.insert(fpath.string());
+					NormalFiles.insert(fpath.wstring());
 				}
-				if (fpath.filename().string().find(subStr) != std::string::npos &&
-					fpath.filename().string().find("normal") != std::string::npos)
+				if (fpath.filename().wstring().find(subStr) != std::wstring::npos &&
+					fpath.filename().wstring().find(L"normal") != std::wstring::npos)
 				{
 					//NormalFiles.Add(FString(fpath.string().data()));
-					NormalFiles.insert(fpath.string());
+					NormalFiles.insert(fpath.wstring());
 				}
-				if (fpath.filename().string().find(subStr) != std::string::npos &&
+				if (fpath.filename().wstring().find(subStr) != std::wstring::npos &&
 					(
-					     (fpath.filename().string().find("2k") != std::string::npos) ||
-					     (fpath.filename().string().find("4k") != std::string::npos) ||
-					     (fpath.filename().string().find("8k") != std::string::npos)
+					     (fpath.filename().wstring().find(L"2k") != std::wstring::npos) ||
+					     (fpath.filename().wstring().find(L"4k") != std::wstring::npos) ||
+					     (fpath.filename().wstring().find(L"8k") != std::wstring::npos)
 					)
 					)
 				{
 					//NormalFiles.Add(FString(fpath.string().data()));
-					NormalFiles.insert(fpath.string());
+					NormalFiles.insert(fpath.wstring());
 				}
 			}
 		}
@@ -518,23 +568,25 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 }
 
 
-void FRealBandAssetImporter::ImportTextures(const std::set<std::string>& iFileList)
+void FRealBandAssetImporter::ImportTextures(const std::set<std::wstring>& iFileList)
 {
 	UTextureFactory* TexFactory = NewObject<UTextureFactory>(UTextureFactory::StaticClass());
 
 	TArray<FString> TextureFiles;
-	for (const string & AssetName : iFileList)
+	for (const wstring & AssetName : iFileList)
 	{
 		TextureFiles.Add(AssetName.c_str());
 	}
 
 	FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
 	TArray<UObject*> ImportedObjects = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures"),
+	
 		NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
 	
 	int ObjCount = ImportedObjects.Num();
 
 	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
+	
 
 }
 
@@ -553,26 +605,34 @@ void FRealBandAssetImporter::ImportGlm(const TArray<FString> & iGLMFileList)
 			FText());
 		const bool bSilent = true; // don't pop options window
 
-		ImportContext.InitOptions(nullptr, FString("/Engine/RealBand"), bSilent);
+		
+		ImportContext.InitOptions(nullptr, FString("/Engine/RealBand/GLB"), bSilent);
+		
+		
 		if (TSharedPtr<IDatasmithScene> LoadedScene = ExternalSourcePtr->TryLoad())
 		{
 			ImportContext.InitScene(LoadedScene.ToSharedRef());
 
 		}
 
-		ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand");
+	
+		ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand/GLB");
 		ImportContext.Options->BaseOptions.bIncludeGeometry = true;
 		ImportContext.Options->BaseOptions.bIncludeMaterial = true;
 		ImportContext.Options->BaseOptions.bIncludeCamera = true;
 		ImportContext.Options->BaseOptions.bIncludeLight = true;
 		ImportContext.FeedbackContext = GWarn;
 		ImportContext.Options->bUseSameOptions = true;
+		const EObjectFlags NewObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
 
 		//ImportContext.FilteredScene = FDatasmithSceneFactory::DuplicateScene(ImportContext.Scene.ToSharedRef());
 		ImportContext.SceneName = FDatasmithUtils::SanitizeObjectName(ImportContext.Scene->GetName());
 		ImportContext.ObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
 		ImportContext.bUserCancelled = false;
-		ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
+		//ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
+		ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand/GLB"));
+		
+		
 		bool bUserCancelled = false;
 		bool bImport = DatasmithImportFactoryImpl::ImportDatasmithScene(ImportContext, bUserCancelled);
 		TArray<FName> AssetClasses;
@@ -636,11 +696,13 @@ void FRealBandAssetImporter::ImportFbx(const TArray<FString> & iFbxList, bool bO
 	// Asset Handling 
 	// OBJ
 	bool bSyncToBrowser = false;
-	FString ImportAssetPath = TEXT("/Engine/RealBand");
-	TArray<UObject*>  ImportedObjects;
+	
+	FString ImportAssetPath = TEXT("/Engine/RealBand/FBX");
+		TArray<UObject*>  ImportedObjects;
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
 	if (bObj)
 	{
+		ImportAssetPath = TEXT("/Engine/RealBand/OBJ");
 		ImportedObjects = AssetToolsModule.Get().ImportAssets(iFbxList, ImportAssetPath, nullptr,
 			bSyncToBrowser, nullptr, true);
 	}
@@ -703,6 +765,7 @@ void FRealBandAssetImporter::UpdateCollections(const FName& CollectionName, cons
 	TArray<FName> PackagePaths;
 	PackagePaths.Add(PackageDir);
 	PackagePaths.Add(FName("/Engine/RealBand/Textures/Prespective"));
+	
 
 	bool bAdded = false;
 	TArray<FAssetData> AssetsInPackages;
@@ -739,14 +802,16 @@ void FRealBandAssetImporter::UpdateCollections(const FName& CollectionName, cons
 }
 
 
-void FRealBandAssetImporter::GetFilesForImport(const std::string& iFolderPath,const char* iFinalRegExp, std::set<std::string> & oFilesForImport)
+void FRealBandAssetImporter::GetFilesForImport(const std::wstring& iFolderPath,const char* iFinalRegExp, std::set<std::wstring> & oFilesForImport)
 {
+	std::wstring wstr;
 	if (iFinalRegExp)
 	{
 		const fs::path win_dir = iFolderPath.c_str();
+	
 		//for (const auto& file_path : file_list<true>(win_dir, std::regex(iFinalRegExp)))
 		for (const std::filesystem::path& file_path : file_list<true>(win_dir, std::regex(iFinalRegExp)))
-			oFilesForImport.insert(file_path.string());
+			oFilesForImport.insert(file_path.wstring());
 	}
 }
 
