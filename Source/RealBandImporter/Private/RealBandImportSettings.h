@@ -1,4 +1,5 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+//Copyright(C) 2022 VAXPORT all rights reserved.
+
 
 #pragma once
 
@@ -26,6 +27,7 @@ class   URealBandImportSettings : public UObject, public FNotifyHook
 public:
 
 	URealBandImportSettings();
+	virtual ~URealBandImportSettings();
 	void NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged) override;
 	/** Import Formats */
 	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Path", meta = (FFilePath))
@@ -102,14 +104,15 @@ public:
 		TSharedPtr<SWindow> pSettingsWindow;
 		TSharedPtr<SBox> pSettingsBox;
 		TSharedPtr<SCanvas> pSettingsCanvasBox;
-		FReply ApplySettings();
+		FReply SaveSettings();
 		FReply ResetSettings();
 		void OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
 		void OnPropertyViewObjectArrayChanged(const FString& InTitle, const TArray<UObject*>& InObjects);
 		TSharedPtr<class IDetailsView> SettingsDetailsView;
-		URealBandImportSettings* pRealBandSettings;
+	     URealBandImportSettings *pRealBandSettings;
+		 TSharedPtr < URealBandImportSettings> pRealBandSettings1;
 		USRPREFERENCE *objUsrPreference;
-
+		virtual ~RealBandImportSettingsUI();
 		void OnPropertyChanged(UObject* ObjectBeingModified, FPropertyChangedEvent& PropertyChangedEvent);
 		FDelegateHandle OnPropertyChangedHandle;
 private:
