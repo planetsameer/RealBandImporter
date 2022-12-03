@@ -1,3 +1,5 @@
+//Copyright(C) 2022 VAXPORT all rights reserved.
+
 
 #ifndef FRealBandExportClass_H
 #define FRealBandExportClass_H

@@ -39,6 +39,8 @@ TUniquePtr< FSlateStyleSet > FRealBandStyle::Create()
 		.SetColorAndOpacity(FSlateColor(FLinearColor(100.4352f, 100.3647f, 100.8862f)))
 		.SetFont(TTF_FONT("Pretendard-Black", 40)));
 	//Style->SetBackgroundBrush(IMAGE_BRUSH("brush", FVector2D(912, 582), FLinearColor(FColor(0.4352F, 0.3647F, 0.8862F)), ESlateBrushTileType::NoTile));
+	//Style->Set("RealBandImporter.PluginAction", new IMAGE_BRUSH_SVG(TEXT("PlaceholderButtonIcon"), Icon20x20));
+	Style->Set("RealBandImporter.PluginAction", new IMAGE_BRUSH_SVG(TEXT("RealBandB"), Icon20x20));
 	return Style;
 }
 

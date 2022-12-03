@@ -196,7 +196,7 @@ void FRealBandAssetLoader::OnAssetSearchSuggestionFilter(const FText& SearchText
 
 		TArray<FName> PackagePaths;
 		PackagePaths.Add(FName("/Engine/RealBand"));
-
+		
 		bool bAdded = false;
 		TArray<FAssetData> AssetsInPackages;
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));

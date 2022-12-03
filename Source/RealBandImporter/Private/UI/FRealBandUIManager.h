@@ -1,3 +1,4 @@
+//Copyright(C) 2022 VAXPORT all rights reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -79,6 +80,8 @@ private:
 	USRPREFERENCE ObjUserPreference;
 	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS  Type );
 	FReply SavePreferences(TWeakPtr< SMenuAnchor >);
+	void SetupMenuItem();
+	void FillToolbar(FToolBarBuilder& ToolbarBuilder);
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );

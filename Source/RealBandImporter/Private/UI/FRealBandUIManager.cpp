@@ -89,6 +89,10 @@
 
 #include "Styling/SlateStyleMacros.h"
 
+//Tools Menus
+#include "ToolMenus.h"
+#include "ToolMenuSection.h"
+
 //#include "RealBandImportSettings.h"
 //uint16 FRealBandUIManagerImpl::ActiveTypeBitset = TNumericLimits<uint16>::Max();
 //#include "Cascade/Private/CascadeActions.h"
@@ -96,7 +100,7 @@
 
 DEFINE_LOG_CATEGORY(LogManager);
 
-
+#define LEVELEDITOR_MODULE_NAME TEXT("LevelEditor")
 TSharedPtr<FRealBandUIManagerImpl> FRealBandUIManager::Instance;
 const FName RealBandTabName = "RealBandTab";
 
@@ -115,16 +119,16 @@ FRealBandUIManagerImpl::~FRealBandUIManagerImpl()
 {
 	//FRealBandUIManager::Instance.Reset();
 	//pFRealBandAssetLoader.Reset();
-	pOverlay.Reset();
-	pCanvas.Reset();
+	//pOverlay.Reset();
+	//pCanvas.Reset();
 	//pFRealBandAssetLoader.Reset();
 	ObjUserPreference.ActiveTypeBitset = TNumericLimits<uint16>::Max();
 	ObjUserPreference.ActiveTextypeBitset = TNumericLimits<uint16>::Max();
-	int test = 1;
+	
 }
 void FRealBandUIManagerImpl::Initialize()
 {
-	 
+	
 	// Find all the engine installations
 	TMap<FString, FString> EngineInstallations;
 	FDesktopPlatformModule::Get()->EnumerateEngineInstallations(EngineInstallations);
@@ -157,7 +161,7 @@ void FRealBandUIManagerImpl::Initialize()
 		}
 	}
 
-	
+	SetupMenuItem();
 	//Create the MainWindow
 	CreateWindow();
 
@@ -176,9 +180,48 @@ void FRealBandUIManager::Initialize(TSharedPtr<FRealBandAssetImporter> iFRealBan
 		//FRealBandStyle::SetIcon("Icon8", "IconsB");
 		FRealBandStyle::SetIcon("Icon8", "Icon40x40");
 	}
+	
 	Instance->Initialize();
 }
 
+
+void FRealBandUIManagerImpl::SetupMenuItem()
+{
+	FRealBandStyle::SetIcon("Logo", "Logo80x80");
+	FRealBandStyle::SetIcon("ContextLogo", "Logo32x32");
+	//FRealBandStyle::SetSVGIcon("MenuLogo", "QuixelBridgeB");
+	FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>(LEVELEDITOR_MODULE_NAME);
+	TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
+	ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, nullptr, FToolBarExtensionDelegate::CreateRaw(this, &FRealBandUIManagerImpl::FillToolbar));
+	LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
+
+	// Adding Bridge entry to Quick Content menu.
+	UToolMenu* AddMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.AddQuickMenu");
+	FToolMenuSection& Section = AddMenu->FindOrAddSection("Content");
+	Section.AddMenuEntry("OpenRealBand",
+		LOCTEXT("OpenRealBand_Label", "RealBandImporter"),
+		LOCTEXT("OpenRealBand_Desc", "Opens the RealBand Importer."),
+		FSlateIcon(FName("RealBandImporterStyle"), "RealBand.MenuLogo"),
+		FUIAction(FExecuteAction::CreateRaw(this, &FRealBandUIManagerImpl::CreateWindow), FCanExecuteAction())
+	).InsertPosition = FToolMenuInsert("ImportContent", EToolMenuInsertType::After);
+}
+
+void FRealBandUIManagerImpl::FillToolbar(FToolBarBuilder& ToolbarBuilder)
+{
+	ToolbarBuilder.BeginSection(TEXT("RealBandImporter"));
+	{
+		ToolbarBuilder.AddToolBarButton(
+			FUIAction(FExecuteAction::CreateRaw(this, &FRealBandUIManagerImpl::CreateWindow)),
+			FName(TEXT("RealBand Importer")),
+			LOCTEXT("QMSLiveLink_label", "RealBandImporter"),
+			LOCTEXT("WorldProperties_ToolTipOverride", "Megascans Link"),
+			FSlateIcon(FRealBandStyle::GetStyleSetName(), "RealBand.Logo"),
+			EUserInterfaceActionType::Button,
+			FName(TEXT("RealBandImporter"))
+		);
+	}
+	ToolbarBuilder.EndSection();
+}
 
 
 void FRealBandUIManagerImpl::CreateWindow()
@@ -196,8 +239,10 @@ void FRealBandUIManagerImpl::CreateWindow()
 	URealBandImportSettings* pRealBandSettings = GetMutableDefault<URealBandImportSettings>();
 	SettingsDetailsView->SetObject(pRealBandSettings);
 	*/
-	//TSharedPtr <RealBandImportSettingsUI> pRealBandImportSettings = SNew(RealBandImportSettingsUI);
+	//TSharedPtr <RealBandImportSettingsUI> pRealBandImportSettings = SNew(RealBandImportSettingsUI, ObjPreference( & objUserPreference));
+	//pRealBandImportSettings.ObjPreference
 	//SAssignNew(pRealBandImportSettings, URealBandImportSettings)
+
 
 	if (!pDialogMainWindow )
 	{
@@ -212,7 +257,7 @@ void FRealBandUIManagerImpl::CreateWindow()
 			.SupportsMaximize(false)
 			.SupportsMinimize(false)
 			.SizingRule(ESizingRule::UserSized)
-			
+			//.IsTopmostWindow(true)
 			[
 				SAssignNew(pOverlay, SOverlay)
 			+ SOverlay::Slot()
@@ -377,8 +422,10 @@ void FRealBandUIManagerImpl::CreateWindow()
 		pRealBandImportSettings->pSettingsWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 			{
 				pImport->SetVisibility(EVisibility::Visible);
-				pRealBandImportSettings->SetVisibility(EVisibility::Collapsed);
+				pRealBandImportSettings->SetVisibility(EVisibility::Hidden);
 				pApplyButton->SetVisibility(EVisibility::Hidden);
+				pDialogMainWindow->BringToFront();
+				
 			}));
 
 	}
@@ -390,6 +437,8 @@ void FRealBandUIManagerImpl::CreateWindow()
 
 	pDialogMainWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 		{
+			pRealBandImportSettings->SaveSettings();
+		//	pRealBandImportSettings.Reset();
 			pDialogMainWindow.Reset();
 		}));
 
@@ -530,22 +579,18 @@ FReply FRealBandUIManagerImpl::ApplySettings()
 {
 	if(pFRealBandAssetLoader->GetVisibility() == EVisibility::Visible)
 		return FReply::Handled();
-
-	
-	//bool isActive = false;
-	
-	//const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_GLM;
-	//isActive = ActiveTypeBitset & Mask;
 	pApplyButton->SetVisibility(EVisibility::Hidden);
-	pRealBandImportSettings->SetVisibility(EVisibility::Collapsed);
+	pRealBandImportSettings->SetVisibility(EVisibility::Hidden);
 	//pSettingsBox->SetVisibility(EVisibility::Collapsed);
 	pImport->SetVisibility(EVisibility::Visible);
 	//FText AssetFolderPath = pAssetFolderPath->GetText();
 	//FString fPath = AssetFolderPath.ToString();
-	//FText AssetFolderPath = FText::FromString(ObjUserPreference.FolderPath.c_str());
-	FText AssetFolderPath = FText::FromString("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset");
+	FText AssetFolderPath = FText::FromString(ObjUserPreference.FolderPath.c_str());
+	//FText AssetFolderPath = FText::FromString("C:\\Assets\\RealBand_bunddle_Asset\\RealBand_bunddle_Asset");
 	pFRealBandAssetImporter->CreateTexturesFromAssets(AssetFolderPath);
-	pDialogMainWindow->Restore();
+	pDialogMainWindow->BringToFront();
+	
+
 	return FReply::Handled();
 }
 

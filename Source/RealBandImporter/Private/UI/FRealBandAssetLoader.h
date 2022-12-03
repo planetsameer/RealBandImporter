@@ -1,3 +1,5 @@
+//Copyright(C) 2022 VAXPORT all rights reserved.
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -11,7 +13,7 @@
 #include "AssetData.h"
 #include "IContentBrowserSingleton.h"
 #include "SourcesData.h"
-#include "Widgets/DeclarativeSyntaxSupport.h"
+
 
 
 class SAssetView;
