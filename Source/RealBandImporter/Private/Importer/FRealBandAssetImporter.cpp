@@ -328,21 +328,29 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 		for (const auto& dirEntry : recursive_directory_iterator(iAssetFolder.ToString().GetCharArray().GetData()))
 		{
 			if (dirEntry.path().extension() == ".png") {
-				if (dirEntry.path().filename().string().find("perspective") != std::string::npos)
+				if (dirEntry.path().filename().string().find("perspective") != std::string::npos &&
+					!ImportTextContext.Contains(FString(dirEntry.path().filename().wstring().data())))
 				{
-					const wchar_t *ptrDir = dirEntry.path().wstring().data();
-				//	TextureFiles.Add(FString(dirEntry.path().string().data()));
 					TextureFiles.Add(FString(dirEntry.path().wstring().data()));
+					ImportTextContext.Add(FString(dirEntry.path().filename().wstring().data()));
 				}
 			}
 		}
 
+		//TODO : May be we should not use ImportAssets and use texture factory to create a texture 
+
 		UTextureFactory* TexFactory = NewObject<UTextureFactory>(UTextureFactory::StaticClass());
+		TexFactory->SuppressImportOverwriteDialog(true);
 
 		FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
+
+		//TArray<UObject*> ImportedTextures = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures/Prespective"),
+		//	NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
 		TArray<UObject*> ImportedTextures = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures/Prespective"),
-			NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
+			TexFactory, false, nullptr, false);
 		AssetCount = ImportedTextures.Num();
+
+		
 
 		UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
 		
@@ -388,40 +396,43 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 		int debug = 1;
 	}
 
-	uint16 MaskDiff = 1 << SELECTOPTIONS::DIFFUSE;
-	//bool isDiffuse = iUserPreference.ActiveTypeBitset & MaskDiff;
-	bool isDiffuse = iUserPreference.ActiveTypeBitset & (1 << SELECTOPTIONS::DIFFUSE);
+	
+	uint16 MaskDiff = 1 << TEXTUREOPTIONS::TDIFFUSE;
+	bool isDiffuse = iUserPreference.ActiveTextypeBitset & MaskDiff;
+	//bool isDiffuse = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TDIFFUSE);
 	if (isDiffuse)
 	{
-		Texture = Texture ^ 1 << 4;
+		Texture = Texture ^ 1 << 3;
+		
 	}
 
-	uint16 MaskNormal = 1 << SELECTOPTIONS::NORMAL;
-	bool isNormal = iUserPreference.ActiveTypeBitset & (1 << SELECTOPTIONS::NORMAL);
+	uint16 MaskNormal = 1 << TEXTUREOPTIONS::TNORMAL;
+	bool isNormal = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TNORMAL);
 	if (isNormal)
 	{
-		Texture = Texture ^ 1 << 3;
+		Texture = Texture ^ 1 << 2;
 	}
 
-	uint16 Mask2k = 1 << SELECTOPTIONS::TWO_K;
-	bool is2K = iUserPreference.ActiveTypeBitset & (1 << SELECTOPTIONS::TWO_K);
+	uint16 Mask2k = 1 << TEXTUREOPTIONS::TWOK;
+	bool is2K = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::TWOK);
 	if (is2K)
-	{
-		Texture = Texture ^ 1 << 7;
-	}
-
-	uint16 Mask4k = 1 << SELECTOPTIONS::FOUR_K;
-	bool is4K = iUserPreference.ActiveTypeBitset & (1 << SELECTOPTIONS::FOUR_K);
-	if (is4K)
 	{
 		Texture = Texture ^ 1 << 6;
 	}
 
-	uint16 Mask8k = 1 << SELECTOPTIONS::EIGHT_K;
-	bool is8K = iUserPreference.ActiveTypeBitset & (1 << SELECTOPTIONS::EIGHT_K);
-	if (is8K)
+	uint16 Mask4k = 1 << TEXTUREOPTIONS::FOURK;
+	bool is4K = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::FOURK);
+	if (is4K)
 	{
 		Texture = Texture ^ 1 << 5;
+	}
+
+	uint16 Mask8k = 1 << TEXTUREOPTIONS::EIGHTK;
+	bool is8K = iUserPreference.ActiveTextypeBitset & (1 << TEXTUREOPTIONS::EIGHTK);
+	if (is8K)
+	{
+		//Texture = Texture ^ 1 << 5;
+		Texture = Texture ^ 1 << 4;
 	}
 
 	uint16 MaskF = 1 << SELECTOPTIONS::FORMAT_FBX;
@@ -450,6 +461,13 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 			Texture = Texture ^ 1 << 1;
 		}
 	}
+	else
+	{
+		if (isTexHigh)
+		{
+			Texture = Texture ^ 1 << 1;
+		}
+	}
 
 	uint16 MaskLow = 1 << SELECTOPTIONS::LOW;
 	bool isLow = iUserPreference.ActiveTypeBitset & MaskLow;
@@ -461,9 +479,20 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 			Texture = Texture ^ 1 << 0;
 		}
 	}
+	else
+	{
+		if (isTexLow)
+		{
+			Texture = Texture ^ 1 << 0;
+		}
+	}
 	
-	char *finalRegExp = FormatExprArray[--AssetFormat];
-	GetFilesForImport(iUserPreference.FolderPath,finalRegExp, filesForImport);
+	if (AssetFormat > 0)
+	{
+		char* finalRegExp = FormatExprArray[--AssetFormat];
+		//UE_LOG(LogCustom, Display, TEXT("%s"), *finalRegExp);
+		GetFilesForImport(iUserPreference.FolderPath, finalRegExp, filesForImport);
+	}
 	//for (const std::string& fileName : filesForImport)
 	//{
 	////	fs::path fpath{ fs::u8path(u8"abc.txt") };
@@ -484,9 +513,11 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 	//ImportFbx(FbxFiles);
 	//ImportFbx(ObjFiles, isOBJ);
 	
-	char *finalTextureExpr = TextureExprArray[--Texture];
-
-	GetFilesForImport(iUserPreference.FolderPath, finalTextureExpr, filesForImport);
+	if (Texture > 0)
+	{
+		char* finalTextureExpr = TextureExprArray[Texture];
+		GetFilesForImport(iUserPreference.FolderPath, finalTextureExpr, filesForImport);
+	}
 //	ImportTextures(filesForImport);
 //	return;
 

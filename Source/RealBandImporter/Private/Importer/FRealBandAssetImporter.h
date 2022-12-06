@@ -23,6 +23,7 @@ private:
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
 	void GetFilesForImport(const std::wstring & iFolderPath, const char* iFinalRegExp, std::set<std::wstring>& oFilesForImport);
 	void ImportTextures(const std::set<std::wstring> &);
+	TSet<FString> ImportTextContext;
 public:
 	FRealBandAssetImporter();
 	void GetAssetConfig(FAssetPickerConfig& oConfigPicker);
