@@ -31,17 +31,14 @@ URealBandImportSettings::~URealBandImportSettings()
 
 }
 
-void URealBandImportSettings::NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChangede)
-{
-	int test = 1;
-}
+
 
 void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, FPropertyChangedEvent& PropertyChangedEvent)
 {
 	
 	const FName propName = PropertyChangedEvent.GetPropertyName();
 	const FName categoryName = FObjectEditorUtils::GetCategoryFName(PropertyChangedEvent.Property);
-	if (SettingsDetailsView && pRealBandSettings && categoryName.GetStringLength() > 0)
+	if (SettingsDetailsView && pRealBandSettings && categoryName.GetStringLength() > 0 && propName != "None")
 	{
 		if (propName == "bImportFBX")
 		{
@@ -127,11 +124,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->b2K)
 			{
-				SetOptionBit(ECheckBoxState::Checked, SELECTOPTIONS::TWO_K);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TWOK);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, SELECTOPTIONS::TWO_K);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TWOK);
 			}
 		}
 
@@ -139,11 +136,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->b4K)
 			{
-				SetOptionBit(ECheckBoxState::Checked, SELECTOPTIONS::FOUR_K);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::FOURK);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, SELECTOPTIONS::FOUR_K);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::FOURK);
 			}
 		}
 
@@ -151,11 +148,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->b8K)
 			{
-				SetOptionBit(ECheckBoxState::Checked, SELECTOPTIONS::EIGHT_K);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::EIGHTK);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, SELECTOPTIONS::EIGHT_K);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::EIGHTK);
 			}
 		}
 
@@ -163,11 +160,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->bDiffuse)
 			{
-				SetOptionBit(ECheckBoxState::Checked, SELECTOPTIONS::DIFFUSE);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TDIFFUSE);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, SELECTOPTIONS::DIFFUSE);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TDIFFUSE);
 			}
 		}
 
@@ -175,11 +172,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->bNormal)
 			{
-				SetOptionBit(ECheckBoxState::Checked, SELECTOPTIONS::NORMAL);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TNORMAL);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, SELECTOPTIONS::NORMAL);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, ::TEXTUREOPTIONS::TNORMAL);
 			}
 		}
 
@@ -187,11 +184,11 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 		{
 			if (pRealBandSettings->bTexHigh)
 			{
-				SetOptionBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TEXHIGH);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TEXHIGH);
 			}
 			else
 			{
-				SetOptionBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TEXHIGH);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TEXHIGH);
 			}
 		}
 
@@ -200,14 +197,18 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 			if (pRealBandSettings->bTexLow)
 			{
 				//objUsrPreference->Format |= 1 << FORMATOPTIONS::TEXTURES;
-				SetOptionBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TEXLOW);
+				SetOptionTextureBit(ECheckBoxState::Checked, TEXTUREOPTIONS::TEXLOW);
 			}
 			else
 			{
 				//objUsrPreference->Format &= 1 << FORMATOPTIONS::TEXTURES;;
-				SetOptionBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TEXLOW);
+				SetOptionTextureBit(ECheckBoxState::Unchecked, TEXTUREOPTIONS::TEXLOW);
 			}
 		}
+		
+		pRealBandSettings->SaveConfig(CPF_Config, nullptr, GConfig, false);;
+		pRealBandSettings->gUserPreference = *objUsrPreference;
+
 	}
 
 }
@@ -231,7 +232,7 @@ void RealBandImportSettingsUI::SetOptionBit(ECheckBoxState CheckState, SELECTOPT
 }
 
 
-void RealBandImportSettingsUI::SetOptionBit(ECheckBoxState CheckState, TEXTUREOPTIONS Type)
+void RealBandImportSettingsUI::SetOptionTextureBit(ECheckBoxState CheckState, TEXTUREOPTIONS Type)
 {
 	const uint16 Mask = 1 << Type;
 	//const uint16 TMask = 1 << TexType;
@@ -360,7 +361,26 @@ void RealBandImportSettingsUI::Construct(const FArguments& InArgs)
 	pRealBandSettings->bTexHigh = true;
 	pRealBandSettings->bTexLow = true;
 
-//	pRealBandSettings->SaveConfig();
+
+	
+	pRealBandSettings->LoadConfig();
+    // Initialise the Properties from the saved config
+	if (FName(*(pRealBandSettings->AssetFolder.Path)).GetDisplayNameEntry()->IsWide())
+	{
+		WIDECHAR NewTextureNameString[NAME_SIZE];
+		FName ConvertedFString = FName(*(pRealBandSettings->AssetFolder.Path));
+		ConvertedFString.GetPlainWIDEString(NewTextureNameString);
+		objUsrPreference->FolderPath = StringCast<WIDECHAR>(NewTextureNameString).Get();
+	}
+	else
+	{
+		std::string sFolderPath = std::string(TCHAR_TO_UTF8(*(pRealBandSettings->AssetFolder.Path)));
+		std::wstring wFolderPath(sFolderPath.begin(), sFolderPath.end());
+		objUsrPreference->FolderPath = wFolderPath;
+	}
+	
+	objUsrPreference->ActiveTypeBitset = pRealBandSettings->gUserPreference.ActiveTypeBitset;
+	objUsrPreference->ActiveTextypeBitset = pRealBandSettings->gUserPreference.ActiveTextypeBitset;
 	//pSettingsWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 	//	{
 	//		pSettingsWindow.Reset();
@@ -395,7 +415,8 @@ FReply RealBandImportSettingsUI::SaveSettings()
 	//pRealBandSettings->SaveConfig();
 	SettingsDetailsView.Reset();
 	pSettingsWindow.Reset();
-	 return FReply::Handled();
+	
+	return FReply::Handled();
 }
 
 FReply RealBandImportSettingsUI::ResetSettings()

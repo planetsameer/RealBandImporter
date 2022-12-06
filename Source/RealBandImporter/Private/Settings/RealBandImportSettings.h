@@ -28,7 +28,6 @@ public:
 
 	URealBandImportSettings();
 	virtual ~URealBandImportSettings();
-	void NotifyPostChange(const FPropertyChangedEvent& PropertyChangedEvent, FProperty* PropertyThatChanged) override;
 	/** Import Formats */
 	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Path", meta = (FFilePath))
 		FDirectoryPath AssetFolder;
@@ -82,6 +81,7 @@ public:
 //	UPROPERTY(Config, DisplayName = "Path", EditAnywhere, Category = "ContentDir")
 //		FString FolderPath;;
 //	TSharedPtr<SButton> UpdateRevisionButton;
+	USRPREFERENCE gUserPreference;
 	
 	
 private:
@@ -102,20 +102,21 @@ public:
 
 		void Construct(const FArguments& InArgs);
 		TSharedPtr<SWindow> pSettingsWindow;
-		TSharedPtr<SBox> pSettingsBox;
-		TSharedPtr<SCanvas> pSettingsCanvasBox;
-		FReply SaveSettings();
+				FReply SaveSettings();
 		FReply ResetSettings();
 		void OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
 		void OnPropertyViewObjectArrayChanged(const FString& InTitle, const TArray<UObject*>& InObjects);
-		TSharedPtr<class IDetailsView> SettingsDetailsView;
-	     URealBandImportSettings *pRealBandSettings;
-		 TSharedPtr < URealBandImportSettings> pRealBandSettings1;
+		
+	    
 		USRPREFERENCE *objUsrPreference;
 		virtual ~RealBandImportSettingsUI();
 		void OnPropertyChanged(UObject* ObjectBeingModified, FPropertyChangedEvent& PropertyChangedEvent);
 		FDelegateHandle OnPropertyChangedHandle;
 private:
 	void SetOptionBit(ECheckBoxState CheckState, SELECTOPTIONS Type);
-	void SetOptionBit(ECheckBoxState CheckState, TEXTUREOPTIONS Type);
+	void SetOptionTextureBit(ECheckBoxState CheckState, TEXTUREOPTIONS Type);
+	TSharedPtr<class IDetailsView> SettingsDetailsView;
+	TSharedPtr<SCanvas> pSettingsCanvasBox;
+	URealBandImportSettings* pRealBandSettings;
+
 };
