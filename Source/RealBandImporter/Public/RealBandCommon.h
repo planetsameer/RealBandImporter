@@ -16,12 +16,12 @@ using namespace std;
  #endif
 
 static uint16 AssetFormat = 0;
-static uint64 Texture = 0;
+static uint16 Texture = 0;
 //static uint16 Texture = 0;
 
 struct  UserPreference
 {
-    string FolderPath;
+    wstring FolderPath;
     string ConnectPath;
     string Project;
     uint16 ActiveTypeBitset;
@@ -31,6 +31,8 @@ struct  UserPreference
     int MeshLevel;
     int TextureType;
 };
+
+typedef struct UserPreference USRPREFERENCE;
 
     enum SELECTOPTIONS
     {
@@ -49,6 +51,18 @@ struct  UserPreference
 
     enum TEXTUREOPTIONS
     {
+        TEXHIGH  ,
+        TEXLOW,
+        TWOK,
+        FOURK,
+        TDIFFUSE,
+        TNORMAL,
+        EIGHTK
+        
+    };
+
+   /* enum TEXTUREOPTIONS1
+    {
         TEXHIGH,
         TEXLOW,
         TWOK,
@@ -56,7 +70,7 @@ struct  UserPreference
         EIGHTK,
         TDIFFUSE,
         TNORMAL
-    };
+    };*/
 
     enum FORMATOPTIONS
     {
@@ -74,7 +88,8 @@ static char* FormatExprArray[] = {
             "^[0-9]+_mesh_(obj)_(low)_\\w+\\.(obj)",
             "^[0-9]+_mesh_(obj)_(high)_\\w+\\.(obj)",
             "^[0-9]+_mesh_(obj)_(low|high)_\\w+\\.(obj)",
-            "^[0-9]+_mesh_(glb)_(low|high)_\\w+\\.(glb)",
+            //"^[0-9]+_mesh_(glb)_(low|high)_\\w+\\.(glb)",
+            "^[0-9]+_mesh_(glb)_(high|low)_\\w+\\.(glb)",
             "^[0-9]+_mesh_(glb)_(low)_\\w+\\.(glb)",
             "^[0-9]+_mesh_(glb)_(high)_\\w+\\.(glb)",
             "^[0-9]+_mesh_(glb)_(high|low)_\\w+\\.(glb)",
@@ -234,4 +249,3 @@ static char* TextureExprArray[] = {
 };
 
 
-typedef struct UserPreference USRPREFERENCE;
