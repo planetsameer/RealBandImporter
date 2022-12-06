@@ -112,16 +112,11 @@ FRealBandUIManagerImpl::FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter
 {
 	ObjUserPreference.ActiveTypeBitset = TNumericLimits<uint16>::Max();
 	ObjUserPreference.ActiveTextypeBitset = TNumericLimits<uint16>::Max();
-	ObjUserPreference.Format = TNumericLimits<uint8>::Max();;
+	ObjUserPreference.Format = TNumericLimits<uint8>::Max();
 }
 
 FRealBandUIManagerImpl::~FRealBandUIManagerImpl()
 {
-	//FRealBandUIManager::Instance.Reset();
-	//pFRealBandAssetLoader.Reset();
-	//pOverlay.Reset();
-	//pCanvas.Reset();
-	//pFRealBandAssetLoader.Reset();
 	ObjUserPreference.ActiveTypeBitset = TNumericLimits<uint16>::Max();
 	ObjUserPreference.ActiveTextypeBitset = TNumericLimits<uint16>::Max();
 	
