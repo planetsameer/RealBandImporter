@@ -4,14 +4,14 @@
 
 
 #include "CoreMinimal.h"
-
+#include "UObject/ObjectMacros.h"
 #include "IContentBrowserSingleton.h"
 #include "RealBandCommon.h"
-
+#include "Delegates/DelegateCombinations.h"
 #include <set>
 class FAssetViewItem;
 
-DECLARE_LOG_CATEGORY_EXTERN(LogCustom, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogRealBand, Log, All);
 
 
 
@@ -27,12 +27,15 @@ private:
 public:
 	FRealBandAssetImporter();
 	void GetAssetConfig(FAssetPickerConfig& oConfigPicker);
-	void Init();
+	bool Init();
 	void ImportFbx(const TArray<FString>&, bool bObj = false);
 	void ImportGlm(const TArray<FString>&);
 	void CreateTexturesFromAssets(const FText &);
 	void GetAssetsCount(int oAssetCount) { oAssetCount = AssetCount; }
 	void ImportSelectedAssets(const TArray<FName> &, const USRPREFERENCE & );
 	void ApplyUserPreferences(const USRPREFERENCE &);
+	void UpdateAssetFolder(FString);
+
 	//void ImportSelectedAssets(const TArray<TSharedPtr<FAssetViewItem&>> & iAssetList) const;
+	FStringDelegate DirChangeDelegate;
 };
