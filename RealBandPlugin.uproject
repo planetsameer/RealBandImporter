@@ -25,6 +25,10 @@
 		{
 			"Name": "UE4glTFImporter",
 			"Enabled": false
+		},
+		{
+			"Name": "RuntimeTests",
+			"Enabled": true
 		}
 	]
 }
