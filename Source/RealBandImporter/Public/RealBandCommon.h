@@ -15,6 +15,25 @@ using namespace std;
     #define REALBAND __declspec(dllimport)  
  #endif
 
+#define WITH_REALBAND 1
+
+DECLARE_DELEGATE_OneParam(FStringDelegate, const FText &);
+
+#if WITH_REALBAND 
+namespace RealBandDirectoryWatcher
+{
+    /** RealBand supported extensions we should be checking for when something changes in the Assets folder. */
+    static const TSet<FString> TextureExtensions =
+    {
+        "png"
+    };
+
+    static const FName NAME_DirectoryWatcher = "DirectoryWatcher";
+}
+#endif
+
+
+
 static uint16 AssetFormat = 0;
 static uint16 Texture = 0;
 //static uint16 Texture = 0;
