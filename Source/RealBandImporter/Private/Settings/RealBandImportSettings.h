@@ -17,6 +17,7 @@ class SWindow;
 class SBox;
 class SCanvas;
 struct FPropertyChangedEvent;
+struct FFileChangeData;
 /**
  * 
  */
@@ -38,7 +39,7 @@ public:
 	UPROPERTY(Config, DisplayName = "FBX", EditAnywhere, Category = "Mesh Settings")
 		bool bImportFBX;
 		
-	UPROPERTY(Config, DisplayName = "GLM", EditAnywhere, Category = "Mesh Settings")
+	UPROPERTY(Config, DisplayName = "GLB", EditAnywhere, Category = "Mesh Settings")
 		bool bImportGLM;
 
 	UPROPERTY(Config, DisplayName = "OBJ", EditAnywhere, Category = "Mesh Settings")
@@ -82,7 +83,34 @@ public:
 //		FString FolderPath;;
 //	TSharedPtr<SButton> UpdateRevisionButton;
 	USRPREFERENCE gUserPreference;
-	
+
+	/*
+* This method is called by directory watcher when any file or folder is changed in the
+* directory where raw ocio config is located.
+*/
+	void AssetFolderPathChangedEvent(const TArray<FFileChangeData>& InFileChanges, const FString InFileMountPath);
+
+	void OnToastCallback(bool);
+	/** Start watching the current directory. */
+	void StartDirectoryWatch(const FString& FilePath);
+	/** Stop watching the current directory. */
+	void StopDirectoryWatch();
+	struct RealBandWatchedDirInfo
+	{
+		/** A handle to the directory watcher. Gives us the ability to control directory watching status. */
+		FDelegateHandle DirectoryWatcherHandle;
+
+		/** Currently watched folder. */
+		FString FolderPath;
+
+		/** A handle to Notification message that pops up to notify user of raw config file going out of date. */
+		TWeakPtr<SNotificationItem> RawConfigChangedToast;
+	};
+
+	/** Information about the currently watched directory. Helps us manage the directory change events. */
+	RealBandWatchedDirInfo WatchedDirectoryInfo;
+
+	FStringDelegate UpdateAssetFolderDelegate;
 	
 private:
 	
@@ -102,7 +130,8 @@ public:
 
 		void Construct(const FArguments& InArgs);
 		TSharedPtr<SWindow> pSettingsWindow;
-				FReply SaveSettings();
+		FReply SaveSettings();
+		FReply SaveConfig(USRPREFERENCE &);
 		FReply ResetSettings();
 		void OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
 		void OnPropertyViewObjectArrayChanged(const FString& InTitle, const TArray<UObject*>& InObjects);
@@ -115,6 +144,7 @@ public:
 private:
 	void SetOptionBit(ECheckBoxState CheckState, SELECTOPTIONS Type);
 	void SetOptionTextureBit(ECheckBoxState CheckState, TEXTUREOPTIONS Type);
+	void UpdateUserPreferences(USRPREFERENCE* );
 	TSharedPtr<class IDetailsView> SettingsDetailsView;
 	TSharedPtr<SCanvas> pSettingsCanvasBox;
 	URealBandImportSettings* pRealBandSettings;

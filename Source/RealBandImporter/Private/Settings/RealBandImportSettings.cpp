@@ -2,11 +2,17 @@
 
 
 #include "RealBandImportSettings.h"
+#include "CoreGlobals.h"
+#include "CoreMinimal.h"
+
 //Widgets
 #include "Widgets/SWindow.h"
 #include "Widgets/SCanvas.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "UObject/ObjectSaveContext.h"
+
 
 //Editor
 #include "LevelEditor.h"
@@ -15,8 +21,22 @@
 #include "ObjectEditorUtils.h"
 #endif // WITH_EDITOR
 
+// For the delegate AssetFolder update
+#include "../Importer/FRealBandAssetImporter.h"
+
+//Directory watch settings
+#if WITH_REALBAND
+#include "DerivedDataCacheInterface.h"
+#include "DirectoryWatcherModule.h"
+#include "IDirectoryWatcher.h"
+#include "Interfaces/ITargetPlatform.h"
+#endif //WITH_EDITOR
+
+#include "Framework/Notifications/NotificationManager.h"
+
 #include <string>
 using namespace std;
+#include <csignal>
 
 #define LOCTEXT_NAMESPACE "RealBandImportSettingsWidget"
 
@@ -115,6 +135,8 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 				std::wstring wFolderPath(sFolderPath.begin(), sFolderPath.end());
 				objUsrPreference->FolderPath = wFolderPath;
 			}
+
+			
 			//std::string sFolderPath = std::string(TCHAR_TO_UTF8(*(pRealBandSettings->AssetFolder.Path)));
 			//std::wstring wFolderPath(sFolderPath.begin(), sFolderPath.end());
 			//objUsrPreference->FolderPath = StringCast<WIDECHAR>(NewTextureNameString).Get();
@@ -206,11 +228,17 @@ void RealBandImportSettingsUI::OnPropertyChanged(UObject* ObjectBeingModified, F
 			}
 		}
 		
+		pRealBandSettings->gUserPreference.ActiveTypeBitset = objUsrPreference->ActiveTypeBitset;
+		pRealBandSettings->gUserPreference.ActiveTextypeBitset = objUsrPreference->ActiveTextypeBitset;
 		pRealBandSettings->SaveConfig(CPF_Config, nullptr, GConfig, false);;
-		pRealBandSettings->gUserPreference = *objUsrPreference;
-
+		
+		
 	}
 
+	if (SettingsDetailsView && pRealBandSettings)
+	{
+		pRealBandSettings->StartDirectoryWatch(objUsrPreference->FolderPath.c_str());
+	}
 }
 
 void RealBandImportSettingsUI::SetOptionBit(ECheckBoxState CheckState, SELECTOPTIONS Type)
@@ -253,6 +281,7 @@ void RealBandImportSettingsUI::SetOptionTextureBit(ECheckBoxState CheckState, TE
 RealBandImportSettingsUI::~RealBandImportSettingsUI()
 {
 	pRealBandSettings = nullptr;
+	FCoreUObjectDelegates::OnObjectPropertyChanged.Remove(OnPropertyChangedHandle);
 }
 
 void RealBandImportSettingsUI::Construct(const FArguments& InArgs)
@@ -260,8 +289,9 @@ void RealBandImportSettingsUI::Construct(const FArguments& InArgs)
 	objUsrPreference = InArgs._ObjPreference;
 	FPropertyEditorModule& PropertyEditorModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	pRealBandSettings = GetMutableDefault<URealBandImportSettings>();
-	
-	
+		
+	TSharedRef<FRealBandAssetImporter> pRealBandAssetImporter(new FRealBandAssetImporter());
+	pRealBandSettings->UpdateAssetFolderDelegate.BindSP(pRealBandAssetImporter, &FRealBandAssetImporter::CreateTexturesFromAssets);
 	
 	FDetailsViewArgs DetailsViewArgs;
 	DetailsViewArgs.bUpdatesFromSelection = true;
@@ -288,7 +318,7 @@ void RealBandImportSettingsUI::Construct(const FArguments& InArgs)
 			SAssignNew(pSettingsWindow, SWindow)
 			.Title(FText::FromString("Settings"))
 		.Style(&FCoreStyle::Get().GetWidgetStyle<FWindowStyle>("Window"))
-		.SizingRule(ESizingRule::Autosized)
+		.SizingRule(ESizingRule::UserSized)
 		.ClientSize(FVector2D(900, 600))
 		.SupportsMaximize(false)
 		.SupportsMinimize(false)
@@ -379,14 +409,132 @@ void RealBandImportSettingsUI::Construct(const FArguments& InArgs)
 		objUsrPreference->FolderPath = wFolderPath;
 	}
 	
-	objUsrPreference->ActiveTypeBitset = pRealBandSettings->gUserPreference.ActiveTypeBitset;
-	objUsrPreference->ActiveTextypeBitset = pRealBandSettings->gUserPreference.ActiveTextypeBitset;
+	UpdateUserPreferences(objUsrPreference);
+//	objUsrPreference->ActiveTypeBitset = pRealBandSettings->gUserPreference.ActiveTypeBitset;
+//	objUsrPreference->ActiveTextypeBitset = pRealBandSettings->gUserPreference.ActiveTextypeBitset;
 	//pSettingsWindow->SetOnWindowClosed(FOnWindowClosed::CreateLambda([this](const TSharedRef<SWindow>& Window)
 	//	{
 	//		pSettingsWindow.Reset();
 	//	}));
 }
 
+
+void RealBandImportSettingsUI::UpdateUserPreferences(USRPREFERENCE* opUsrPreferences)
+{
+	if (pRealBandSettings->bImportFBX)
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_FBX;
+		opUsrPreferences->ActiveTypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_FBX;
+		objUsrPreference->ActiveTypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bImportGLM)
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_GLM;
+		opUsrPreferences->ActiveTypeBitset |= Mask;
+
+	}
+	else
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_GLM;
+		objUsrPreference->ActiveTypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bImportOBJ)
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_OBJ;
+		opUsrPreferences->ActiveTypeBitset |= Mask;
+
+	}
+	else
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::FORMAT_OBJ;
+		objUsrPreference->ActiveTypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bHigh)
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::HIGH;
+		opUsrPreferences->ActiveTypeBitset |= Mask;
+
+	}
+	else
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::HIGH;
+		objUsrPreference->ActiveTypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bLow)
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::LOW;
+		opUsrPreferences->ActiveTypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << SELECTOPTIONS::LOW;
+		objUsrPreference->ActiveTypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bDiffuse)
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TDIFFUSE;
+		opUsrPreferences->ActiveTextypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TDIFFUSE;
+		objUsrPreference->ActiveTextypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->bNormal)
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TNORMAL;
+		opUsrPreferences->ActiveTextypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TNORMAL;
+		objUsrPreference->ActiveTextypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->b2K)
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TWOK;
+		opUsrPreferences->ActiveTextypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::TWOK;
+		objUsrPreference->ActiveTextypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->b4K)
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::FOURK;
+		opUsrPreferences->ActiveTextypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::FOURK;
+		objUsrPreference->ActiveTextypeBitset &= ~Mask;
+	}
+
+	if (pRealBandSettings->b8K)
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::EIGHTK;
+		opUsrPreferences->ActiveTextypeBitset |= Mask;
+	}
+	else
+	{
+		const uint16 Mask = 1 << TEXTUREOPTIONS::EIGHTK;
+		objUsrPreference->ActiveTextypeBitset &= ~Mask;
+	}
+	
+}
 
 void RealBandImportSettingsUI::OnFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -413,9 +561,18 @@ void RealBandImportSettingsUI::OnFinishedChangingProperties(const FPropertyChang
 FReply RealBandImportSettingsUI::SaveSettings()
 {
 	//pRealBandSettings->SaveConfig();
+	pRealBandSettings->SaveConfig(CPF_Config, nullptr, GConfig, false);
 	SettingsDetailsView.Reset();
 	pSettingsWindow.Reset();
 	
+	return FReply::Handled();
+}
+
+FReply RealBandImportSettingsUI::SaveConfig(USRPREFERENCE & iUserPreference)
+{
+	iUserPreference.ActiveTextypeBitset = objUsrPreference->ActiveTextypeBitset;
+	iUserPreference.ActiveTypeBitset = objUsrPreference->ActiveTypeBitset;
+	pRealBandSettings->SaveConfig(CPF_Config, nullptr, GConfig, false);
 	return FReply::Handled();
 }
 
@@ -442,7 +599,114 @@ FReply RealBandImportSettingsUI::ResetSettings()
 	return FReply::Handled();
 }
 
+void URealBandImportSettings::StartDirectoryWatch(const FString& FilePath)
+{
+#if WITH_REALBAND
+	FDirectoryWatcherModule& DirectoryWatcherModule = FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>(RealBandDirectoryWatcher::NAME_DirectoryWatcher);
+	if (IDirectoryWatcher* DirectoryWatcher = DirectoryWatcherModule.Get())
+	{
+		FString FolderPath = FPaths::GetPath(FilePath);
 
+		// Unregister watched folder since ocio config path has changed..
+		StopDirectoryWatch();
+		
+		WatchedDirectoryInfo.FolderPath = MoveTemp(FolderPath);
+		{
+			DirectoryWatcher->RegisterDirectoryChangedCallback_Handle(
+				WatchedDirectoryInfo.FolderPath, IDirectoryWatcher::FDirectoryChanged::CreateUObject(this, &URealBandImportSettings::AssetFolderPathChangedEvent, WatchedDirectoryInfo.FolderPath),
+				WatchedDirectoryInfo.DirectoryWatcherHandle,
+				/*Flags*/ 0
+			);
+		}
+	}
+#endif
+}
+
+void URealBandImportSettings::StopDirectoryWatch()
+{
+#if WITH_REALBAND
+	FDirectoryWatcherModule& DirectoryWatcherModule = FModuleManager::LoadModuleChecked<FDirectoryWatcherModule>(RealBandDirectoryWatcher::NAME_DirectoryWatcher);
+	if (IDirectoryWatcher* DirectoryWatcher = DirectoryWatcherModule.Get())
+	{
+		if (WatchedDirectoryInfo.DirectoryWatcherHandle.IsValid())
+		{
+			DirectoryWatcher->UnregisterDirectoryChangedCallback_Handle(WatchedDirectoryInfo.FolderPath, WatchedDirectoryInfo.DirectoryWatcherHandle);
+			WatchedDirectoryInfo.FolderPath.Empty();
+		}
+	}
+#endif
+}
+
+
+void URealBandImportSettings::AssetFolderPathChangedEvent(const TArray<FFileChangeData>& InFileChanges, const FString InFileMountPath)
+{
+#if WITH_REALBAND
+	// We want to stop reacting to these events while the message is still up.
+	if (WatchedDirectoryInfo.RawConfigChangedToast.IsValid())
+	{
+		return;
+	}
+	for (const FFileChangeData& FileChangeData : InFileChanges)
+	{
+		const FString FileExtension = FPaths::GetExtension(FileChangeData.Filename);
+		if (FileExtension.IsEmpty() || !RealBandDirectoryWatcher::TextureExtensions.Contains(FileExtension))
+		{
+			continue;
+		}
+
+		const FText DialogBody = FText::Format(LOCTEXT("RealBandAssetFolderChanged",
+			"Files added or removed from the Asset Folder. \
+			\nWould you like to reload '{0}' Local Tab?"),
+			FText::FromString(GetName()));
+
+		const FText ReloadRawConfigText = LOCTEXT("ReloadRawConfigConfirm", "Reload");
+		const FText IgnoreReloadRawConfigText = LOCTEXT("IgnoreReloadRawConfig", "Ignore");
+
+
+		FSimpleDelegate OnReloadRawConfig = FSimpleDelegate::CreateLambda([this]() { OnToastCallback(true); });
+		FSimpleDelegate OnIgnoreReloadRawConfig = FSimpleDelegate::CreateLambda([this]() { OnToastCallback(false); });
+
+		FNotificationInfo Info(DialogBody);
+		Info.bFireAndForget = false;
+		Info.bUseLargeFont = false;
+		Info.bUseThrobber = false;
+		Info.bUseSuccessFailIcons = false;
+		Info.ButtonDetails.Add(FNotificationButtonInfo(ReloadRawConfigText, FText(), OnReloadRawConfig));
+		Info.ButtonDetails.Add(FNotificationButtonInfo(IgnoreReloadRawConfigText, FText(), OnIgnoreReloadRawConfig));
+
+		WatchedDirectoryInfo.RawConfigChangedToast = FSlateNotificationManager::Get().AddNotification(Info);
+
+		if (WatchedDirectoryInfo.RawConfigChangedToast.IsValid())
+		{
+			WatchedDirectoryInfo.RawConfigChangedToast.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+		}
+
+		break;
+	}
+
+#endif
+
+}
+
+void URealBandImportSettings::OnToastCallback(bool bInReloadAssets)
+{
+	if (WatchedDirectoryInfo.RawConfigChangedToast.IsValid())
+	{
+		WatchedDirectoryInfo.RawConfigChangedToast.Pin()->SetCompletionState(SNotificationItem::CS_Success);
+		WatchedDirectoryInfo.RawConfigChangedToast.Pin()->ExpireAndFadeout();
+		WatchedDirectoryInfo.RawConfigChangedToast.Reset();
+	}
+
+	if (bInReloadAssets)
+	{
+		//std::wstring sFolderPath = std::wstring(TCHAR_TO_UTF8(*(AssetFolder.Path)));
+		std::wstring sFolderPath = std::wstring((*(AssetFolder.Path)));
+		UpdateAssetFolderDelegate.Execute(FText::FromString(sFolderPath.c_str()));
+// 		UpdateAssetFolderDelegate.Execute(FText::FromString(gUserPreference.FolderPath.c_str()));
+//		UpdateAssetFolderDelegate.Execute(FText::FromString(TEXT("Invalid Input Folder")));
+	//	ReloadExistingColorspaces();
+	}
+}
 
 
 #undef LOCTEXT_NAMESPACE
