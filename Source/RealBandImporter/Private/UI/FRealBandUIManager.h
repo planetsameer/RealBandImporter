@@ -21,6 +21,9 @@ class FRealBandAssetLoader;
 class SGridPanel;
 class RealBandImportSettingsUI;
 
+struct FFileChangeData;
+
+
 //#include "SWebBrowser.h"
 //#include "UI/BrowserBinding.h"
 //#include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -60,8 +63,6 @@ private:
 	FReply ResetSettings();
 	FReply OnImportBtnClicked();
 	FReply LaunchOpenFileDialog();
-	void OnFolderPathChanged(const FText& ChangedText);
-	void HandleSourceComboChanged(TSharedPtr<FString> Item, ESelectInfo::Type SelectInfo);
 	TArray<TSharedPtr <FString>> Array_Resolutions; 
 	TSharedPtr<FString> SelectedProject;
 	TSharedRef<SDockTab> CreatRealBandTab(const FSpawnTabArgs& Args);
@@ -69,26 +70,23 @@ private:
 	FSetPathPickerPathsDelegate SetPathsDelegate;
 
 	TStrongObjectPtr<UDatasmithGLTFImportOptions> ImportOptions;
-	TStrongObjectPtr<UDatasmithGLTFImportOptions>& GetOrCreateGLTFImportOptions();
 	TSharedPtr<class FDatasmithGLTFImporter> Importer;
 	TSharedPtr<FRealBandAssetLoader> pFRealBandAssetLoader;
 	TSharedPtr<FRealBandAssetImporter> pFRealBandAssetImporter;
 	TSharedPtr<SButton> ExpanderArrow;
 	TSharedPtr<SButton> pApplyButton;
-	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
-	TSharedRef<SHorizontalBox> GetSelectedOptionToggle(SELECTOPTIONS , const FText& Text);
+	int GetAssetViewCount();
 	USRPREFERENCE ObjUserPreference;
-	void OnTypeChanged(ECheckBoxState CheckState, SELECTOPTIONS  Type );
-	FReply SavePreferences(TWeakPtr< SMenuAnchor >);
 	void SetupMenuItem();
 	void FillToolbar(FToolBarBuilder& ToolbarBuilder);
+	void OnDialogClosed(const TSharedRef<SWindow>& Window);
 public:
 
 	FRealBandUIManagerImpl(TSharedPtr<FRealBandAssetImporter> );
 	virtual ~FRealBandUIManagerImpl();
 	void Initialize();
 	void CreateWindow();
-	
+	bool RestoreMainWindow();
 	TSharedPtr<SDockTab> LocalBrowserDock;
 	TSharedPtr<SWindow> DragDropWindow;
 	TSharedPtr<IWebBrowserWindow> Browser;
@@ -101,6 +99,7 @@ class FRealBandUIManager
 {
 public:
 	static void Initialize(TSharedPtr<FRealBandAssetImporter>);
+	static bool DisplayStartWindow();
 	static TSharedPtr<FRealBandUIManagerImpl> Instance;
 	~FRealBandUIManager();
 };

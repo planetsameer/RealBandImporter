@@ -1,7 +1,6 @@
 
 
 #include "FRealBandAssetLoader.h"
-
 //Slate
 #include "Framework/Application/SlateApplication.h"
 #include "SAssetView.h"
@@ -88,7 +87,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 		          .MustMatchPossibleSuggestions(false)
 		          
 		      ]
-	        + SHorizontalBox::Slot()
+	       /* + SHorizontalBox::Slot()
               .AutoWidth()
 				[
 					SAssignNew(FilterComboButtonPtr, SComboButton)
@@ -102,7 +101,7 @@ void FRealBandAssetLoader::Construct(const FArguments& InArgs)
 					    .ColorAndOpacity(FSlateColor::UseForeground())
 				        .Image(FAppStyle::Get().GetBrush("Icons.Filter"))
 				     ]
-			    ]
+			    ]*/
 		  ];
 	
 	FrontendFilters = MakeShareable(new FAssetFilterCollectionType());
@@ -365,14 +364,6 @@ void FRealBandAssetLoader::ExtractAssetSearchFilterTerms(const FText& SearchText
 }
 
 
-
-
-// Begin of SWidgetInterface
-void FRealBandAssetLoader::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) 
-{
-	int test = 1;
-	//AssetViewPtr->RequestQuickFrontendListRefresh();
-}
 
 FText FRealBandAssetLoader::GetSearchAssetsHintText() const
 {

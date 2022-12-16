@@ -88,16 +88,11 @@ public:
 	FText GetSearchAssetsHintText() const;
 
 	void HandleAssetViewSearchOptionsChanged();
-	
-
-	void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime);
 
 	/** Return the associated AssetView */
 	const TSharedPtr<SAssetView>& GetAssetView() const { 
 		return AssetViewPtr; 
 	}
-
-
 	void ImportSelectedAssets();
 private:
 
