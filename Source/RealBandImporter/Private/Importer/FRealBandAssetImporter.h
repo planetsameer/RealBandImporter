@@ -23,6 +23,7 @@ private:
 	void UpdateCollections(const FName& CollectionName, const FName& PackageDir);
 	void GetFilesForImport(const std::wstring & iFolderPath, const char* iFinalRegExp, std::set<std::wstring>& oFilesForImport);
 	void ImportTextures(const std::set<std::wstring> &);
+	void ImportAssetUsingFactory(UFactory* ImportFactory, const FString& ObjectName, UPackage* , const FString& ImportPath, TArray<UObject*> & );
 	TSet<FString> ImportTextContext;
 public:
 	FRealBandAssetImporter();

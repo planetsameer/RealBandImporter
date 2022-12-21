@@ -63,6 +63,8 @@
 #include "IImageWrapper.h"
 #include "UnrealEdClasses.h"
 
+#include "UObject/SavePackage.h"
+
 #include <filesystem>
 #include <regex>
 #include <type_traits>
@@ -93,20 +95,24 @@ template < bool RECURSIVE > std::vector<fs::path> file_list(fs::path dir, std::r
 	for (typename fs::recursive_directory_iterator iter{ dir }; iter != end; ++iter)
 	{
 		int pos = -1;
-		const std::string fname = iter->path().filename().string();
-		//std::string ext = iter->path().extension().string();
-//         fname += iter->path().extension().string();
-	   // bool bFind = fname.find_last_of("\\\\", pos);
-	   // std::string substr = fname.substr(pos + 1, fname.length());
+
+//		if (fs::status(iter->path()).permissions() == fs::perms::owner_read)
+		{
+
+			const std::string fname = iter->path().filename().string();
+			//std::string ext = iter->path().extension().string();
+	//         fname += iter->path().extension().string();
+		   // bool bFind = fname.find_last_of("\\\\", pos);
+		   // std::string substr = fname.substr(pos + 1, fname.length());
 
 
-		if (std::regex_match(fname, ext_pattern))
-			result.push_back(*iter);
+			if (std::regex_match(fname, ext_pattern))
+				result.push_back(*iter);
 
-		/* const std::string extension = iter->path().extension().string();
-		 if (fs::is_regular_file(*iter) && std::regex_match(extension, ext_pattern))
-			 result.push_back(*iter);*/
-
+			/* const std::string extension = iter->path().extension().string();
+			 if (fs::is_regular_file(*iter) && std::regex_match(extension, ext_pattern))
+				 result.push_back(*iter);*/
+		}
 
 	}
 
@@ -153,6 +159,7 @@ bool FRealBandAssetImporter::Init()
 	}
 
 	UContentBrowserDataSubsystem* ContentBrowserData = IContentBrowserDataModule::Get().GetSubsystem();
+	
 	bool bCollection = false;
 	TArray<FCollectionNameType> collectionType;
 	if (FCollectionManagerModule::IsModuleAvailable())
@@ -406,7 +413,7 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 				FText::FromString(TEXT("RealBandImporter.cpp"))
 			);
 			FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(excp.what()));
-			UE_LOG(LogRealBand, Display, TEXT("Error:Invalid Input Folder"));
+			UE_LOG(LogRealBand, Error, TEXT("Error:Invalid Input Folder"));
 		}
 
 		if (TextureFiles.IsEmpty())
@@ -417,7 +424,7 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 				FText::FromString(TEXT("RealBandImporter.cpp"))
 			);
 			FMessageDialog::Open(EAppMsgType::OkCancel, FText::FromString(TEXT("No Prespective Texture Found in Asset Folder Path")));
-			UE_LOG(LogRealBand, Display, TEXT("No Prespective Texture Found in Asset Folder Path"));
+			UE_LOG(LogRealBand, Error, TEXT("No Prespective Texture Found in Asset Folder Path"));
 		}
 
 		//  May be we should not use ImportAssets and use texture factory to create a texture 
@@ -523,6 +530,8 @@ void FRealBandAssetImporter::CreateTexturesFromAssets(const FText& iAssetFolder)
 	}
 	else
 	{
+	    // Do we clear the Prespective folder 
+
 		FText DialogText = FText::Format(
 			LOCTEXT("PluginButtonDialogText", "Error:Invalid Input Folder"),
 			FText::FromString(TEXT("Invalid Input Folder")),
@@ -805,23 +814,83 @@ void FRealBandAssetImporter::ImportSelectedAssets(const TArray<FName>& iAssetLis
 void FRealBandAssetImporter::ImportTextures(const std::set<std::wstring>& iFileList)
 {
 	UTextureFactory* TexFactory = NewObject<UTextureFactory>(UTextureFactory::StaticClass());
-
-	TArray<FString> TextureFiles;
-	for (const wstring & AssetName : iFileList)
+	if (TexFactory)
 	{
-		TextureFiles.Add(AssetName.c_str());
+		//If we are a texture factory suppress some warning dialog that we don't want
+		if (TexFactory->IsA(UTextureFactory::StaticClass()))
+		{
+			UTextureFactory::SuppressImportOverwriteDialog();
+		}
+		FScopedSlowTask SlowTask(iFileList.size(), LOCTEXT("ImportSlowTask", "Importing Textures"));
+		SlowTask.MakeDialog(true);
+		TArray<UObject*> TextureList;
+		//TArray<FString> TextureFiles;
+		for (const wstring& AssetName : iFileList)
+		{
+			//TextureFiles.Add(AssetName.c_str());
+			const fs::path win_dir = AssetName.c_str();
+			FString Name = ObjectTools::SanitizeObjectName(FPaths::GetBaseFilename(win_dir.string().c_str()));
+			const FString PackageName = UPackageTools::SanitizePackageName(FPaths::Combine(FString("/Engine/RealBand/"), TEXT("Textures"), Name));
+			UPackage* Pkg = CreatePackage(*PackageName);
+			if (Pkg)
+			{
+				ImportAssetUsingFactory(TexFactory, Name, Pkg, win_dir.string().c_str(), TextureList);
+			}
+			else
+			{
+				UE_LOG(LogRealBand, Error, TEXT("Failed to Create Package %s"), *PackageName);
+			}
+		}
+		SlowTask.CompletedWork = iFileList.size();
+		UE_LOG(LogRealBand, Display, TEXT("Textures Imported :%d"), TextureList.Num());
 	}
+	else
+	{
+		UE_LOG(LogRealBand, Error, TEXT("Failed to Create Texture Factory"));
+	}
+	//return;
+	// Fallback code if above doesnt work 
+	//FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
+	//TArray<UObject*> ImportedObjects = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures"),
+	//
+	//	NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
+	//
+	//int ObjCount = ImportedObjects.Num();
 
-	FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
-	TArray<UObject*> ImportedObjects = AssetToolsModule.Get().ImportAssets(TextureFiles, FString("/Engine/RealBand/Textures"),
-	
-		NewObject<UTextureFactory>(UTextureFactory::StaticClass()), false, nullptr, false);
-	
-	int ObjCount = ImportedObjects.Num();
+	//UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
 
-	UpdateCollections(FName("RealBand"), FName("/Engine/RealBand"));
-	
+}
 
+
+void FRealBandAssetImporter::ImportAssetUsingFactory(UFactory* ImportFactory, const FString& ObjectName,  UPackage* Pkg, const FString& ImportPath
+	                                                , TArray<UObject*> & oTextureList)
+{
+
+	UObject* ImportedAsset = NULL;
+	UTexture2D* TextureObj = nullptr;
+	UClass* ImportAssetType = ImportFactory->ResolveSupportedClass();
+	bool bUserCanceled = false;
+	try
+	{
+		TextureObj = static_cast<UTexture2D*>(ImportFactory->FactoryCreateFile(ImportAssetType, Pkg, *ObjectName, RF_Public | RF_Standalone | RF_Transactional,
+			ImportPath, nullptr, nullptr, bUserCanceled));
+		if (TextureObj)
+		{
+			TextureObj->AssetImportData->Update(ImportPath);
+			FAssetRegistryModule::AssetCreated(TextureObj);
+			Pkg->MarkPackageDirty();
+			GEditor->BroadcastObjectReimported(TextureObj);
+			oTextureList.Add(TextureObj);
+		}
+		else
+		{
+			UE_LOG(LogRealBand, Error, TEXT("Failed to Create Texture for %s"), *ImportPath);
+		}
+	}
+	catch (std::filesystem::filesystem_error& excp)
+	{
+		UE_LOG(LogRealBand, Error, TEXT("Unhandled exception %s"), *(FString(excp.what())));
+	}
 }
 
 
@@ -829,69 +898,73 @@ void FRealBandAssetImporter::ImportGlm(const TArray<FString> & iGLMFileList)
 {
 	TArray<FAssetData> AssetData;
 	using namespace UE::DatasmithImporter;
-
-	for (FString AssetName : iGLMFileList)
+	try
 	{
-		//	const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\planeye\\planeye.glb");
-		const FSourceUri SourceUri = FSourceUri::FromFilePath(AssetName);
-		TSharedPtr<FExternalSource> ExternalSourcePtr = IExternalSourceModule::GetOrCreateExternalSource(SourceUri);
-		FDatasmithImportContext ImportContext(ExternalSourcePtr.ToSharedRef(), true, FName(TEXT("DatasmithLibrary")),
-			FText());
-		const bool bSilent = true; // don't pop options window
-
-		
-		ImportContext.InitOptions(nullptr, FString("/Engine/RealBand/GLB"), bSilent);
-		
-		
-		if (TSharedPtr<IDatasmithScene> LoadedScene = ExternalSourcePtr->TryLoad())
+		for (FString AssetName : iGLMFileList)
 		{
-			ImportContext.InitScene(LoadedScene.ToSharedRef());
+			//	const FSourceUri SourceUri = FSourceUri::FromFilePath("C:\\Assets\\planeye\\planeye.glb");
+			const FSourceUri SourceUri = FSourceUri::FromFilePath(AssetName);
+			TSharedPtr<FExternalSource> ExternalSourcePtr = IExternalSourceModule::GetOrCreateExternalSource(SourceUri);
+			FDatasmithImportContext ImportContext(ExternalSourcePtr.ToSharedRef(), true, FName(TEXT("DatasmithLibrary")),
+				FText());
+			const bool bSilent = true; // don't pop options window
+
+
+			ImportContext.InitOptions(nullptr, FString("/Engine/RealBand/GLB"), bSilent);
+
+
+			if (TSharedPtr<IDatasmithScene> LoadedScene = ExternalSourcePtr->TryLoad())
+			{
+				ImportContext.InitScene(LoadedScene.ToSharedRef());
+			}
+
+
+			ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand/GLB");
+			ImportContext.Options->BaseOptions.bIncludeGeometry = true;
+			ImportContext.Options->BaseOptions.bIncludeMaterial = true;
+			ImportContext.Options->BaseOptions.bIncludeCamera = true;
+			ImportContext.Options->BaseOptions.bIncludeLight = true;
+			ImportContext.FeedbackContext = GWarn;
+			ImportContext.Options->bUseSameOptions = true;
+			const EObjectFlags NewObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
+
+			//ImportContext.FilteredScene = FDatasmithSceneFactory::DuplicateScene(ImportContext.Scene.ToSharedRef());
+			ImportContext.SceneName = FDatasmithUtils::SanitizeObjectName(ImportContext.Scene->GetName());
+			ImportContext.ObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
+			ImportContext.bUserCancelled = false;
+			//ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
+			ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand/GLB"));
+
+
+			bool bUserCancelled = false;
+			bool bImport = DatasmithImportFactoryImpl::ImportDatasmithScene(ImportContext, bUserCancelled);
+			TArray<FName> AssetClasses;
+			TArray<AActor*> Actors = ImportContext.GetImportedActors();
+			TArray<UObject*>  ImportedActors;
+			for (AActor* Actor : Actors)
+			{
+				FString packagePath = Actor->GetPackage()->GetPathName();
+				//	Actor->GetPackage()->SetLoadedPath(FPackagePath());
+				UObject* ActorObject = dynamic_cast<UObject*>(Actor);
+				UClass* AClass = Actor->GetClass();
+				ImportedActors.Add(ActorObject);
+				AssetData.Add(ActorObject);
+				AssetClasses.Add(AClass->GetFName());
+			}
+
+			ImportedActors.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
+			AssetData.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
+
+
+			FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+			ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
 
 		}
-
-	
-		ImportContext.Options->BaseOptions.AssetOptions.PackagePath = FName("/Engine/RealBand/GLB");
-		ImportContext.Options->BaseOptions.bIncludeGeometry = true;
-		ImportContext.Options->BaseOptions.bIncludeMaterial = true;
-		ImportContext.Options->BaseOptions.bIncludeCamera = true;
-		ImportContext.Options->BaseOptions.bIncludeLight = true;
-		ImportContext.FeedbackContext = GWarn;
-		ImportContext.Options->bUseSameOptions = true;
-		const EObjectFlags NewObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
-
-		//ImportContext.FilteredScene = FDatasmithSceneFactory::DuplicateScene(ImportContext.Scene.ToSharedRef());
-		ImportContext.SceneName = FDatasmithUtils::SanitizeObjectName(ImportContext.Scene->GetName());
-		ImportContext.ObjectFlags = RF_Public | RF_Standalone | RF_Transactional;
-		ImportContext.bUserCancelled = false;
-		//ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand"));
-		ImportContext.AssetsContext.ReInit(FString("/Engine/RealBand/GLB"));
-		
-		
-		bool bUserCancelled = false;
-		bool bImport = DatasmithImportFactoryImpl::ImportDatasmithScene(ImportContext, bUserCancelled);
-		TArray<FName> AssetClasses;
-		TArray<AActor*> Actors = ImportContext.GetImportedActors();
-		TArray<UObject*>  ImportedActors;
-		for (AActor* Actor : Actors)
-		{
-			FString packagePath = Actor->GetPackage()->GetPathName();
-			//	Actor->GetPackage()->SetLoadedPath(FPackagePath());
-			UObject* ActorObject = dynamic_cast<UObject*>(Actor);
-			UClass* AClass = Actor->GetClass();
-			ImportedActors.Add(ActorObject);
-			AssetData.Add(ActorObject);
-			AssetClasses.Add(AClass->GetFName());
-		}
-
-		ImportedActors.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
-		AssetData.Add(dynamic_cast<UObject*>(ImportContext.SceneAsset));
-
-
-		FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-		ContentBrowserModule.Get().SyncBrowserToAssets(ImportedActors);
-
-	}	
-
+	}
+	catch (...)
+	{
+		UE_LOG(LogRealBand, Error, TEXT("Unhandled exception:ImportGLB"));
+	}
 }
 
 
@@ -948,6 +1021,7 @@ void FRealBandAssetImporter::ImportFbx(const TArray<FString> & iFbxList, bool bO
 		FAssetRegistryModule& AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 		UFbxFactory* FbxFactory = NewObject<UFbxFactory>(UFbxFactory::StaticClass());
 		FbxFactory->SetDetectImportTypeOnImport(false);
+		
 		ImportedObjects = AssetToolsModule.Get().ImportAssets(iFbxList, ImportAssetPath, FbxFactory,
 			bSyncToBrowser, nullptr, true);
 
